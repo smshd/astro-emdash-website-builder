@@ -97,15 +97,9 @@ Do not proceed past this gate until the user explicitly approves. If the user re
 
 ## STEP 2: Color Palette Extraction (Conditional)
 
-If the user provided a screenshot path in Q6, use the **Skill tool** to call `nano-banana-pro` in analysis mode on the screenshot:
+If the user provided a screenshot path in Q6, **read the screenshot directly with the Read tool** (you are multimodal — no image model is used for analysis; gpt-image-2 is generation-only). Inspect the image and extract the 5 dominant brand colours as hex codes, labelled: `primary`, `secondary`, `accent`, `neutral-light`, `neutral-dark`. Prefer colours that pass WCAG AA for body text/background pairings; if the screenshot's palette is too low-contrast, note it and adjust the neutral pair.
 
-```
-Skill: nano-banana-pro
-Prompt: "Analyze this image and extract the 5 dominant brand colors as hex codes. Return them labeled as: primary, secondary, accent, neutral-light, neutral-dark."
-Input image: [path provided by user]
-```
-
-Store the extracted hex values. These will feed into `tailwind.config.mjs`.
+Store the extracted hex values. These feed the emdash design tokens / Tailwind config (per the tech-builder agent — `tailwind.css`/`theme.css`, not the discarded Astro `tailwind.config.mjs`).
 
 If the user said "choose for me", select a professional palette appropriate to their industry based on their services and tone preference.
 
