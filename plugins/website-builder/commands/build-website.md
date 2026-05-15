@@ -260,8 +260,12 @@ contains every page/collection entry. Each image field is an emdash `$media`
 object written by seo-writer in this exact shape:
 
 ```json
-"hero_image": { "$media": { "url": "PLACEHOLDER_REPLACED_BY_GPT_IMAGE_STAGE5", "alt": "<descriptive alt>", "filename": "<slug>-hero.webp" } }
+"hero_image":     { "$media": { "url": "PLACEHOLDER_REPLACED_BY_GPT_IMAGE_STAGE5", "alt": "<descriptive alt>", "filename": "<slug>-hero.webp" } }
+"featured_image": { "$media": { "url": "PLACEHOLDER_REPLACED_BY_GPT_IMAGE_STAGE5", "alt": "<descriptive alt>", "filename": "<slug>-featured.webp" } }
 ```
+
+The token lives under `hero_image` for services/locations/pages and under
+`featured_image` for blog `posts` entries — scan and replace BOTH.
 
 Your job for every such object is to: generate the image, save it into the
 per-client emdash asset directory `seed/assets/` (the tech-builder /
@@ -283,6 +287,10 @@ raw-URL image fields; emdash rejects them).
    - homepage entry `hero_image` → homepage hero
    - `content.services[*].hero_image` → per-service hero
    - `content.locations[*].hero_image` → per-location hero
+   - blog `posts[*].featured_image` → per-post featured image (blog
+     `posts` entries carry the token under `featured_image`, NOT
+     `hero_image` — you MUST scan and replace it there too, or Plan 3's
+     pre-build gate hard-fails every blog post with an image)
    - the OG/share image field → OG image
    - the about/team image field → team image
 2. **Generate each image** with the Skill tool, `--output` set to the absolute
@@ -293,6 +301,7 @@ raw-URL image fields; emdash rejects them).
    - **Homepage hero** — `--aspect 16:9`: `"Professional [industry] service hero image, modern and clean, photorealistic, [primaryColor] tones, no text overlays, wide cinematic lighting"`
    - **Service hero** (one per service) — `--aspect 16:9`: `"Professional photo of [service name] work being performed, clean modern setting, photorealistic, no text"`
    - **Location hero** (one per location) — `--aspect 16:9`: `"Street-level view of [city], [state], clean bright daylight, professional photography, no text"`
+   - **Blog post featured** (one per `posts` entry) — `--aspect 16:9`: `"Editorial photo illustrating [post topic], clean modern setting, photorealistic, no text"`
    - **OG/share image** — `--aspect 1:1`: `"[Business name] — [primary service] in [primary city], clean brand image, no text"`
    - **Team image** — `--aspect 16:9`: `"Friendly professional team of [industry] workers, modern setting, approachable, photorealistic, no text"`
    All calls use `--format webp`. Example:
@@ -302,9 +311,12 @@ raw-URL image fields; emdash rejects them).
    ```
 3. **Replace the token.** For each generated asset, edit `seed/seed.json`:
    set that `$media` object's `url` to `"seed/assets/<filename>"`. Change
-   nothing else in the object. After all replacements, `Grep`
+   nothing else in the object. This applies to the token under BOTH
+   `hero_image` (services/locations/pages) and `featured_image` (blog
+   `posts`). After all replacements, `Grep`
    `PLACEHOLDER_REPLACED_BY_GPT_IMAGE_STAGE5` in `seed/seed.json` → **0
-   matches** (hard gate; if any remain, an image was missed — generate it).
+   matches** (hard gate; if any remain, an image was missed — generate it;
+   a surviving `featured_image` token hard-fails Plan 3's pre-build gate).
 4. **Validate JSON.** `python -c "import json;json.load(open('seed/seed.json'))"`
    must succeed (emdash rejects malformed seed and raw-URL image fields).
 5. **Asset directory note.** If `seed/assets/` does not exist, create it.
