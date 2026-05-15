@@ -237,143 +237,44 @@ NEVER remove `astro-robots-txt` on assumption. The decision file is the single a
 
 ---
 
-## STEP 7: Image Generation (Stage 5)
+## STEP 7: Image Generation (Stage 5 — gpt-image)
 
-After the auditor gives a full PASS, generate all required imagery with the
-**`gpt-image`** skill (engine: `gpt-image-2`, snapshot `gpt-image-2-2026-04-21`,
-`--format webp`). `nano-banana-pro` is the **documented fallback engine** —
-only use it (same prompts) if `gpt-image` fails to produce an asset after a
-retry; note any fallback in the handoff report.
-
-**Contract with Stage 3 (seo-writer / Plan 4).** `seed/seed.json` already
-contains every page/collection entry. Each image field is an emdash `$media`
-object written by seo-writer in this exact shape:
-
-```json
-"hero_image":     { "$media": { "url": "PLACEHOLDER_REPLACED_BY_GPT_IMAGE_STAGE5", "alt": "<descriptive alt>", "filename": "<slug>-hero.webp" } }
-"featured_image": { "$media": { "url": "PLACEHOLDER_REPLACED_BY_GPT_IMAGE_STAGE5", "alt": "<descriptive alt>", "filename": "<slug>-featured.webp" } }
-```
-
-The token lives under `hero_image` for services/locations/pages and under
-`featured_image` for blog `posts` entries — scan and replace BOTH.
-
-Your job for every such object is to: generate the image, save it into the
-per-client emdash asset directory `seed/assets/` (the tech-builder /
-emdash media convention from Plan 3 — do not invent a different location),
-then **replace ONLY the literal string `PLACEHOLDER_REPLACED_BY_GPT_IMAGE_STAGE5`
-in that object's `url` with the saved asset's path** (`seed/assets/<filename>`,
-forward slashes). **Preserve `alt` and `filename` byte-for-byte — do not
-rewrite them.** Do not change image fields whose `url` is not the placeholder
-token. emdash ingests the local-path `$media` into the R2 `MEDIA` binding at
-seed-apply time (emdash media handling is owned by emdash/Plan 3 — do not add
-raw-URL image fields; emdash rejects them).
-
-### Procedure
-
-1. **Locate every placeholder.** Read `seed/seed.json`. Find all `$media`
-   objects with `url == "PLACEHOLDER_REPLACED_BY_GPT_IMAGE_STAGE5"`. Build a
-   work list of `{ json-path, alt, filename }`. Group by image purpose using
-   the entry's collection + slug:
-   - homepage entry `hero_image` → homepage hero
-   - `content.services[*].hero_image` → per-service hero
-   - `content.locations[*].hero_image` → per-location hero
-   - blog `posts[*].featured_image` → per-post featured image (blog
-     `posts` entries carry the token under `featured_image`, NOT
-     `hero_image` — you MUST scan and replace it there too, or Plan 3's
-     pre-build gate hard-fails every blog post with an image)
-   - the OG/share image field → OG image
-   - the about/team image field → team image
-2. **Generate each image** with the Skill tool, `--output` set to the absolute
-   path `<project>/seed/assets/<filename>` (the `gpt-image` skill writes an
-   absolute `--output` exactly as given). Use the entry's `alt` text to inform
-   a strong prompt. Suggested prompts (substitute business/service/location/
-   colour from Step 1 + the Step 2 palette):
-   - **Homepage hero** — `--aspect 16:9`: `"Professional [industry] service hero image, modern and clean, photorealistic, [primaryColor] tones, no text overlays, wide cinematic lighting"`
-   - **Service hero** (one per service) — `--aspect 16:9`: `"Professional photo of [service name] work being performed, clean modern setting, photorealistic, no text"`
-   - **Location hero** (one per location) — `--aspect 16:9`: `"Street-level view of [city], [state], clean bright daylight, professional photography, no text"`
-   - **Blog post featured** (one per `posts` entry) — `--aspect 16:9`: `"Editorial photo illustrating [post topic], clean modern setting, photorealistic, no text"`
-   - **OG/share image** — `--aspect 1:1`: `"[Business name] — [primary service] in [primary city], clean brand image, no text"`
-   - **Team image** — `--aspect 16:9`: `"Friendly professional team of [industry] workers, modern setting, approachable, photorealistic, no text"`
-   All calls use `--format webp`. Example:
-   ```
-   Skill: gpt-image
-   Command: python scripts/run.py generate.py --prompt "Professional plumbing service hero, modern and clean, photorealistic, teal tones, no text, cinematic lighting" --aspect 16:9 --format webp --output "<project>/seed/assets/home-hero.webp"
-   ```
-3. **Replace the token.** For each generated asset, edit `seed/seed.json`:
-   set that `$media` object's `url` to `"seed/assets/<filename>"`. Change
-   nothing else in the object. This applies to the token under BOTH
-   `hero_image` (services/locations/pages) and `featured_image` (blog
-   `posts`). After all replacements, `Grep`
-   `PLACEHOLDER_REPLACED_BY_GPT_IMAGE_STAGE5` in `seed/seed.json` → **0
-   matches** (hard gate; if any remain, an image was missed — generate it;
-   a surviving `featured_image` token hard-fails Plan 3's pre-build gate).
-4. **Validate JSON.** `python -c "import json;json.load(open('seed/seed.json'))"`
-   must succeed (emdash rejects malformed seed and raw-URL image fields).
-5. **Asset directory note.** If `seed/assets/` does not exist, create it.
-   The exact directory is Plan 3's emdash-media convention; if Plan 3's
-   tech-builder placed assets elsewhere, follow that and use the matching
-   relative path in the `url` — the contract is "local path emdash can
-   ingest", not a hardcoded folder.
-
-The `alt` text already lives in each `$media` object (written by seo-writer
-per the AU writing standard) — it is preserved automatically because you only
-ever overwrite `url`.
+Use the **Skill tool** with the `gpt-image` skill (gpt-image-2, model snapshot per the skill; Images API; `OPENAI_API_KEY`; `output_format=webp`; base64 output). For every image the build needs (homepage hero, each service hero, each location hero, each blog post featured image, OG/social, about/team), generate the webp and then **replace the matching `$media.url` token** in `seed/seed.json`: find each `"url": "PLACEHOLDER_REPLACED_BY_GPT_IMAGE_STAGE5"` under `hero_image` (services/locations/pages collections) and `featured_image` (blog `posts` collection) — sibling `filename` + `alt` were set by seo-writer — and replace the placeholder with the generated asset reference (uploaded to emdash R2 `MEDIA` / referenced per the emdash media model). Use the seo-writer's `alt`. nano-banana-pro remains available only as a fallback if gpt-image fails. After replacement, no `PLACEHOLDER_REPLACED_BY_GPT_IMAGE_STAGE5` token may remain anywhere in `seed.json` (the auditor Section 4.1 / Section 9 will catch leftovers).
 
 ---
 
-## STEP 8: Final Build Validation
+## STEP 8: Final Build Validation (Stage 7 — build)
 
-Run the production build:
-```bash
-npm run build
-```
-
-If it fails, diagnose the errors and fix them. Re-run until the build succeeds with zero errors.
-
-Then report to the user:
-- Build status: SUCCESS
-- All pages generated (list them)
-- All images generated (list them)
-- Next steps: set up Cloudflare Pages, configure environment variables (Resend API key), submit sitemap to Google Search Console
+Run `astro build` (emdash Worker build — NOT `npm run build` of an Astro/Pages site). Fix any errors and re-run until it builds with zero errors. Then locally verify with the Windows-safe dev/seed workflow (`scripts/emdash-dev.mjs`) that `/`, every service/location page, `/contact`, `/sitemap-index.xml`, and `/robots.txt` return 200 with real rendered content (emdash renders per-request from D1; the seed applies on first request to an empty DB).
 
 ---
 
-## STEP 9: Handoff Report
+## STEP 9: Deploy to Preview + Handoff Report (Stage 7 — deploy, STOP at preview)
 
-Present a clean summary to the user:
+Deploy with `wrangler deploy` (a Cloudflare **Worker** — NEVER `wrangler pages deploy`). This publishes to the Worker's **preview** only. **NEVER auto-promote to production. John promotes manually.** Do not run any promote/`--env production` step.
 
-```
-## Your Website is Ready
+Then present the handoff:
+
+## Your Website is Ready (Preview)
 
 ### Pages Built
-- Homepage
-- About
-- Contact
-- Services: [list]
-- Locations: [list]
+- Homepage, About, Contact
+- Services: [list] · Locations: [list] · Blog/guides (TOFU backlog): [list]
 
-### Design Quality
-- Design personality: [selected personality]
-- Visual features: gradient text, split-word animations, bento grids, glass-morphism, section dividers, colored shadows, grain overlay, page transitions
-- Motion: GSAP scroll-triggered reveals, parallax, count-up stats, micro-interactions
-- All animations respect prefers-reduced-motion
+### SEO
+- Titles 50–60 chars, metas 140–160 chars (auditor-verified)
+- Schema KEPT: WebSite (homepage-only, not double-emitted), LocalBusiness, Service, FAQPage, BreadcrumbList
+- Sitemap: `/sitemap-index.xml` (`@astrojs/sitemap`, KEPT)
+- robots.txt: per `references/robots-sitemap-decision.md` — [Option a: custom emdash SEO-settings robots.txt → /sitemap-index.xml] OR [BLOCKED: astro-robots-txt left in place, Plan 4 decision unresolved]
+- Australian copy self-check: PASS (AU guide + avo-writing-voice)
 
-### SEO Setup
-- All title tags: 50-60 chars
-- All meta descriptions: 140-160 chars
-- Schema markup: LocalBusiness, Service, FAQ, BreadcrumbList, WebSite
-- Sitemap: /sitemap-index.xml
-- Robots.txt: /robots.txt
+### Next Steps (John)
+1. Review the preview Worker URL.
+2. When satisfied, **John** promotes to production (not automated).
+3. Set `OPENAI_API_KEY` / `RESEND` (or emdash contact equivalent) secrets in the Worker.
+4. Submit `/sitemap-index.xml` to Google Search Console; add Google Business Profile.
 
-### Next Steps
-1. Deploy: `npx wrangler pages deploy ./dist`
-2. Set env var in Cloudflare: RESEND_API_KEY=your_key
-3. Point your domain in Cloudflare Dashboard
-4. Submit sitemap in Google Search Console
-5. Add your Google Business Profile link
-
-### Verify Your Site
-- Lighthouse: target Performance >90, SEO 100, Accessibility >90
-- Schema: Google Rich Results Test
-- Contact form: test end-to-end submission
-```
+### Verify
+- Lighthouse target: Performance >90, SEO 100, Accessibility >90
+- Schema: Google Rich Results Test (LocalBusiness/Service/FAQ/Breadcrumb)
+- Contact form end-to-end
