@@ -307,6 +307,24 @@ Authoritative source: `plugins/website-builder/references/au-writing-style-guide
 
 ---
 
+## Checklist Section 11: Icon System Present
+
+The fork ships an inline raw-SVG icon system (Plan 3) vendored at `plugins/website-builder/references/icons/` (LobeHub Icons for brand/UI, itshover for motion-accent). Nico's framework has NO icon system, so this section closes a real gap. List the available icons in `references/icons/` first.
+
+### 11.1 Icons are present where the design needs them
+- [ ] **HARD FAIL:** No icon "holes" — every WhyUs/feature item, social link, process step, and contact-method that visually expects an icon renders an actual inline `<svg>` (not an empty span, a missing element, a unicode glyph stand-in, or a broken `<img>` to a non-existent icon file).
+- [ ] WhyUs / feature / value-prop list items each render an inline SVG icon.
+- [ ] Footer/header social links each render an inline SVG icon (one per platform supplied in onboarding).
+- [ ] Process/steps section items render an inline SVG icon per step.
+
+### 11.2 Icons come from the vendored system, inline, zero-JS by default
+- [ ] **HARD FAIL:** Icons are inline raw `<svg>` markup (or an Astro component wrapping inline SVG), NOT `<img src>` to remote icon CDNs and NOT an icon-font (no `<i class="fa-...">`, no Material Symbols web font).
+- [ ] Icon SVGs trace back to the vendored set in `references/icons/` (same `viewBox`/path family). Flag any ad-hoc hand-drawn or AI-improvised icon not from the vendored set.
+- [ ] React-island animated icons (itshover) are used sparingly — at most a hero/WhyUs accent — and static inline SVG is the default elsewhere (no blanket client-side icon hydration).
+- [ ] Every decorative icon has `aria-hidden="true"` (or an accessible label if meaningful), and icon size is set via class/attribute (no unstyled default-size SVGs).
+
+---
+
 ## Output Format
 
 Return your report in this exact format:
