@@ -166,3 +166,10 @@ A human-readable digest for the John approval gate. MUST contain: the proposed p
 ## Completion
 
 When done, write all five files, then return to the orchestrator a one-paragraph summary and the absolute path to `research/research-summary.md`. Do NOT proceed to write any website content — your job ends at the artifacts. The orchestrator runs the approval gate.
+
+## Downstream Consumption Contract (for Plan 4 / Plan 6 — do not change unilaterally)
+
+- Plan 4 (seo-writer) reads `research/keyword-briefs.json`. For each page it builds, it MUST take `primary_keyword` (goes in H1 and title — maps to seo-writer.md rule 3 'Primary keyword in H1' and the Title Tag Formulas), `secondary_cluster` (work into body/H2s), `search_intent` + `funnel` (controls copy depth and CTA aggressiveness), `h1_angle`/`title_angle` (the writer's starting direction), and `top_competitors` (what to beat). The writer no longer infers 'one page per service' — the page list is fixed by `research/sitemap.json`.
+- Plan 4 (seo-writer) reads `research/tofu-backlog.json` to know which blog/guide entries to write (emdash blog collection) and which BOFU page each must internally link to (`target_bofu_path`).
+- Plan 6 (seo-auditor) reads `research/keyword-briefs.json` to verify keyword-targeting (the new spec §6 auditor check: did each page actually target its assigned `primary_keyword`?) and reads `research/internal-link-map.json` to make seo-auditor.md §2.5 Internal Linking checks data-driven (every declared link in the map must exist in the built site).
+- Field stability: the field names in Output Artifacts are a frozen interface. Renaming or removing a field is a coordinated change across Plan 2/4/6 and the design spec — never a unilateral edit.
