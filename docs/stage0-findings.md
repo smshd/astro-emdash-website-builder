@@ -30,8 +30,14 @@ Windows bug, not a spike misconfiguration.
 1. `cd C:\Coding\_study\emdash-spike`
 2. `npx emdash dev` — let it create `./data.db`, apply 36 migrations, then fail
    on `spawn npx ENOENT` (expected on Windows; the DB is now migrated).
-3. Start Astro directly with the same env var emdash's CLI would have set:
-   `EMDASH_DATABASE_URL="file:C:\Coding\_study\emdash-spike\data.db" npx astro dev --port 4321`
+3. Start Astro directly with the same env var emdash's CLI would have set.
+   The backslash form `EMDASH_DATABASE_URL="file:C:\Coding\_study\emdash-spike\data.db" npx astro dev --port 4321`
+   is exactly what was run in this spike and it **did work empirically** (server
+   served HTTP 200 with the seed applied). However, backslashes in a SQLite
+   `file:` URI are not portable and can fail silently with other drivers or
+   shells, so later plans should prefer the safe portable form with a `file:///`
+   absolute prefix and forward slashes (recommended):
+   `EMDASH_DATABASE_URL="file:///C:/Coding/_study/emdash-spike/data.db" npx astro dev --port 4321`
 4. `curl http://localhost:4321/` — first request applies the seed
    (`seed/seed.json`, the "Acme" demo). Re-fetch → HTTP 200, full markup.
 
@@ -143,7 +149,7 @@ and Nico must continue to supply:
 | `ServiceSchema` | No | **KEEP** — emdash emits nothing |
 | `FAQSchema` (FAQPage) | No | **KEEP** — emdash emits nothing even with visible FAQ |
 | `BreadcrumbSchema` (BreadcrumbList) | No | **KEEP** — emdash emits nothing |
-| `WebSiteSchema` | Partial (`WebSite` name+url, homepage-wide via every page) | **KEEP Nico's** — emdash's is minimal and emitted site-wide, not homepage-only as Nico's audit requires; not the identical job. Low-priority dedup candidate only if emdash's `WebSite` is later scoped to homepage and enriched. |
+| `WebSiteSchema` | Partial (`WebSite` name+url, homepage-wide via every page) | **KEEP Nico's** — emdash's is minimal and emitted site-wide (identical block on `/`, `/pricing`, `/contact`), whereas Nico's audit hard-requires it homepage-only (`seo-auditor.md` §3.1: "`WebSiteSchema` present on homepage ONLY"). Different scope, so not the identical job. Low-priority dedup candidate only if emdash's `WebSite` is later scoped to homepage and enriched. |
 
 Net: no schema emitter can be dropped on the strength of emdash's native
 output. The local-business schema suite (LocalBusiness / Service / FAQ /
