@@ -162,3 +162,113 @@ omits `og:image` and `twitter:image` entirely and hardcodes `twitter:card` to
 `summary`. Any decision to drop Nico's SEO head must account for the missing
 social image tags. (Flagged here as evidence; the head keep/drop decision is a
 separate task.)
+
+## Open Item B — sitemap/robots
+
+Empirical spike: determine exactly what emdash emits natively for sitemap and
+robots, then a keep-or-drop decision per emitter against Nico's stack
+(`@astrojs/sitemap` + `astro-robots-txt`). Same throwaway spike, same
+local-dev/seed procedure as Open Item A (server served HTTP 200 with the
+"Acme" seed applied; DB `./data.db` migrated; started with
+`EMDASH_DATABASE_URL="file:///C:/Coding/_study/emdash-spike/data.db" npx astro dev --port 4321`).
+
+### HTTP results (verified against the running seeded server)
+
+Fetched with `curl -s -D <hdr> -o <body> -w "%{http_code}"`. All four paths
+hit emdash's own injected routes (not Astro's static 404) — confirmed by the
+emdash-specific `Cache-Control` headers from the route source.
+
+| Path | HTTP | Content-Type | Cache-Control | Body (verbatim) |
+|---|---|---|---|---|
+| `/sitemap.xml` | **200** | `application/xml; charset=utf-8` | `public, max-age=3600` | valid but **empty** sitemap index (see below) |
+| `/sitemap-index.xml` | **404** | `application/xml` | (none) | `<!-- Collection not found or empty -->` |
+| `/sitemap-0.xml` | **500** | `application/xml` | (none) | `<!-- EmDash not configured -->` |
+| `/robots.txt` | **200** | `text/plain; charset=utf-8` | `public, max-age=86400` | emdash default robots (see below) |
+
+`/sitemap.xml` body (verbatim, 121 bytes):
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+</sitemapindex>
+```
+
+`/robots.txt` body (verbatim, 120 bytes):
+
+```
+User-agent: *
+Allow: /
+
+# Disallow admin and API routes
+Disallow: /_emdash/
+
+Sitemap: http://localhost:4321/sitemap.xml
+```
+
+`/sitemap-index.xml` and `/sitemap-0.xml` are NOT emdash sitemap outputs: they
+match emdash's `/sitemap-[collection].xml` route with `collection="index"` /
+`collection="0"` respectively, so they 404 ("Collection not found or empty")
+and 500 ("EmDash not configured") — they are *misses against the per-collection
+route*, not the `@astrojs/sitemap` index/child files (those paths exist only
+because `@astrojs/sitemap` uses them; emdash does not).
+
+### What emdash emits natively (sitemap and robots — separately)
+
+**Robots — emdash emits a complete, usable robots.txt natively.** Source:
+`C:\Coding\_study\emdash\packages\core\src\astro\routes\robots.txt.ts` (route
+injected at `/robots.txt` by `integration/routes.ts` ll. 706–709). Behaviour:
+serves a custom robots.txt from SEO settings if configured, else a generated
+default that allows all crawlers, disallows `/_emdash/`, and appends an
+absolute `Sitemap:` directive. The spike (fresh seed, no custom robots set)
+returned the generated default with `Sitemap: http://localhost:4321/sitemap.xml`
+— a real, well-formed robots.txt with a working sitemap pointer. Absolute URL
+derived from SEO-settings `url` or request origin.
+
+**Sitemap — emdash emits a structurally valid sitemap natively, but it lists
+ZERO content pages for this template's content model.** Source:
+`sitemap.xml.ts` (sitemap *index*) + `sitemap-[collection].xml.ts` (per-collection
+child) + `api/handlers/seo.ts::handleSitemapData`. The index enumerates only
+collections where `_emdash_collections.has_seo = 1`, each producing a child
+`/sitemap-{collection}.xml` of published, non-noindex entries with absolute
+`<loc>` URLs (built from the collection's `url_pattern`). Empirically the index
+came back **well-formed but empty** — `<sitemapindex>` with no `<sitemap>`
+children — because the seeded marketing template's pages (`/`, `/pricing`,
+`/contact`, verified rendering 200 in Open Item A) are not members of a
+`has_seo=1` content collection, so `handleSitemapData` enumerates nothing. So:
+emdash's sitemap is correct in *form* (valid XML, absolute URLs when populated,
+dynamic, DB-driven) but does **not** cover the static marketing content pages
+this plugin builds. It is a collection sitemap, not a page sitemap.
+
+Contrast with Nico's stack (`tech-builder.md` ll. 297–311, `seo-auditor.md`
+§ ll. 32–40, `build-website.md` ll. 94–100): `@astrojs/sitemap` builds
+`/sitemap-index.xml` + `/sitemap-0.xml` at build time over Astro's prerendered
+page graph (every static marketing/service/location page), requiring `site:` in
+`astro.config.mjs`; `astro-robots-txt` emits `/robots.txt` at build referencing
+that sitemap. Different mechanism (build-time over the page graph) and different
+coverage (the actual content pages) from emdash's runtime collection sitemap.
+
+### Decision (per spec §2 — default keep Nico's; drop only on proof of equivalence)
+
+Rule: drop a commodity emitter only if emdash **provably** already produces an
+equivalent, usable output. Sitemap and robots decided independently.
+
+| Emitter | emdash native equivalent? | Verdict |
+|---|---|---|
+| `astro-robots-txt` (Nico, `/robots.txt`) | **Yes — provably equivalent and usable.** emdash serves a valid `/robots.txt` (HTTP 200, `text/plain`) natively on every deploy: allow-all, `Disallow: /_emdash/`, absolute `Sitemap:` directive, plus a custom-robots override hook from SEO settings. Evidence: verbatim 200 body above + `robots.txt.ts` source. | **DROP `astro-robots-txt`** — emdash's native robots.txt is equivalent and arguably better (it also hides the `/_emdash/` admin surface, which Nico's bare `robotsTxt()` does not). **Reconciliation required:** emdash's robots points at `/sitemap.xml` (its own path), not Nico's `/sitemap-index.xml`. If Nico's sitemap is kept (below), either (a) set emdash SEO-settings `robotsTxt` to a custom value referencing `/sitemap-index.xml`, or (b) accept two sitemap pointers. Net still DROP the `astro-robots-txt` integration; manage robots via emdash SEO settings. |
+| `@astrojs/sitemap` (Nico, `/sitemap-index.xml`) | **No — not equivalent.** emdash's `/sitemap.xml` returns HTTP 200 with valid XML, but **empty** (zero `<sitemap>` children) for this template — it indexes `has_seo=1` *content collections*, not the prerendered marketing/service/location *pages* the plugin's whole value rests on. emdash emits *a* sitemap, but it omits the content pages. | **KEEP `@astrojs/sitemap` — with-reconciliation, NOT drop.** Per the task's explicit nuance: emdash emits a sitemap but it omits the content pages, so this is keep-with-reconciliation, not drop. emdash's empty `/sitemap.xml` does not provably do Nico's job (listing the actual built pages). Reconciliation items: (1) path divergence — emdash owns `/sitemap.xml`, Nico's lives at `/sitemap-index.xml`; both can coexist (no path collision) but it is two sitemaps; (2) longer-term, if marketing pages are modelled as a `has_seo=1` emdash collection, emdash's native sitemap could subsume Nico's — re-evaluate then. For now KEEP. |
+
+Per-emitter summary, evidence-based and consistent with default-keep /
+drop-only-on-proof:
+
+- **Robots: DROP Nico's `astro-robots-txt`** — emdash provably emits an
+  equivalent, usable, arguably-superior `/robots.txt` natively (verbatim 200
+  evidence). Reconcile the sitemap pointer via emdash SEO settings.
+- **Sitemap: KEEP Nico's `@astrojs/sitemap` (with reconciliation)** — emdash's
+  native `/sitemap.xml` is HTTP 200 and valid but **empty of content pages**
+  for this content model; it does not provably replicate Nico's page-graph
+  sitemap. Burden of proof for dropping is unmet. Revisit only if marketing
+  pages become a `has_seo=1` collection.
+
+Note: the two emitters get **opposite** verdicts on purpose — robots equivalence
+is proven by a populated 200 body; sitemap equivalence is *disproven* by a 200
+body that is empty of the pages that matter.
