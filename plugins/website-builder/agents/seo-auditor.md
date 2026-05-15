@@ -325,6 +325,30 @@ The fork ships an inline raw-SVG icon system (Plan 3) vendored at `plugins/websi
 
 ---
 
+## Checklist Section 12: Schema Kept-and-Not-Duplicated (emdash retarget)
+
+emdash natively emits ONLY a minimal site-wide `WebSite` JSON-LD plus minimal head tags (no LocalBusiness/Service/FAQPage/BreadcrumbList, no og:image/twitter:image, twitter:card hardcoded `summary`). The locked decision: KEEP all Nico schema components + Nico SEO head enrichment; DROP only `astro-robots-txt` (gated — see 12.4); KEEP `@astrojs/sitemap`. This section verifies nothing in Nico's schema/head set was silently dropped during the emdash retarget, and that nothing is double-emitted.
+
+### 12.1 No Nico schema component silently dropped
+- [ ] **HARD FAIL:** All five Nico schema emitters are present in the build and wired into the emdash server-rendered pages: `WebSiteSchema`, `LocalBusinessSchema`, `ServiceSchema`, `BreadcrumbSchema`, `FAQSchema`. A retarget that lost any of these to "emdash will handle it" is a HARD FAIL — emdash provably emits none of LocalBusiness/Service/FAQPage/BreadcrumbList.
+- [ ] **HARD FAIL:** Nico's SEO `<head>` enrichment is present (og:image, twitter:image, twitter:card `summary_large_image` where a social image exists) — emdash omits these natively, so they must be supplied.
+
+### 12.2 WebSiteSchema is NOT double-emitted on the homepage
+- [ ] **HARD FAIL:** The homepage emits exactly ONE `WebSite`/`WebSiteSchema` JSON-LD block. emdash emits a minimal site-wide `WebSite` on every page (incl. the homepage); Nico's `WebSiteSchema` is homepage-only. On the homepage these would collide. Verify exactly one `@type":"WebSite"` JSON-LD script in the homepage `<head>`:
+  - If emdash's native site-wide `WebSite` is still emitted, Nico's homepage `WebSiteSchema` must be suppressed on the homepage (or vice versa) — exactly one survives. Two `WebSite` blocks on the homepage = HARD FAIL.
+  - On every NON-homepage page: emdash's site-wide `WebSite` may appear (acceptable, native); Nico's `WebSiteSchema` must NOT appear (it is homepage-only per Section 3.1) — a non-home page with Nico's `WebSiteSchema` is a FAIL.
+
+### 12.3 Sitemap kept; robots dropped only when gated
+- [ ] `@astrojs/sitemap` is still integrated (Nico's `/sitemap-index.xml` over the page graph) — it was KEPT, not dropped. FAIL if `@astrojs/sitemap` was removed.
+- [ ] If `astro-robots-txt` was removed from config, Section 12.4 MUST show the gate was satisfied. If `astro-robots-txt` was removed WITHOUT a satisfied gate, **HARD FAIL** (the robots-DROP blocker was violated).
+
+### 12.4 Robots/sitemap decision applied (reads Plan 4's decision artifact)
+- [ ] Read `plugins/website-builder/references/robots-sitemap-decision.md`. Confirm `## Status` is `RESOLVED`. If absent or not RESOLVED: `astro-robots-txt` MUST still be present (Section 12.3) — its removal would be a HARD FAIL.
+- [ ] If RESOLVED with Option (a): verify a custom emdash SEO-settings robots.txt is configured AND the built/preview `/robots.txt` emits `Sitemap: <origin>/sitemap-index.xml` (Nico's real sitemap) and NOT `Sitemap: <origin>/sitemap.xml` (emdash's empty native one). A robots.txt advertising the empty `/sitemap.xml` while the real sitemap is `/sitemap-index.xml` = HARD FAIL.
+- [ ] If RESOLVED with Option (b) (dual pointers explicitly accepted): both `Sitemap:` lines present and the decision file documents the acceptance.
+
+---
+
 ## Output Format
 
 Return your report in this exact format:
