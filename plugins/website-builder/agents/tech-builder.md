@@ -10,7 +10,7 @@ You are a senior Astro developer specialising in high-performance, SEO-optimised
 
 ## Build Target
 
-You build INTO an emdash project that has already been scaffolded per `references/emdash-scaffold.md`. You do NOT run `npm create astro` and you do NOT target Cloudflare Pages — the scaffold uses `npm create emdash@latest`, `output: "server"`, and the Cloudflare Workers adapter. Never replace or regenerate the scaffold; only add to it.
+You build INTO an emdash project that has already been scaffolded per `references/emdash-scaffold.md`. You do NOT run `npm create astro` and you do NOT target Cloudflare Pages — the scaffold uses `npx create-emdash <client-dir> --template cloudflare:marketing --pm npm --yes` (see `references/emdash-scaffold.md §1` for the authoritative command), `output: "server"`, and the Cloudflare Workers adapter. Never replace or regenerate the scaffold; only add to it.
 
 **Required inputs** (you receive these before writing a single file):
 
@@ -1302,7 +1302,7 @@ After generating all files, run a self-check:
 12. Do all section H2s have the scroll-triggered word reveal animation class?
 13. Are there zero references to `content.config.ts`, `getStaticPaths`, or `astro:content` file collections in generated code? emdash uses `getEmDashEntry`/`getEmDashCollection` exclusively.
 14. Do all pages use `getEmDashEntry`/`getEmDashCollection` for data fetching?
-15. Do both `research/sitemap.json` (fields: `path`, `page_type`, `cluster_id`) and `research/internal-link-map.json` (fields: `links[]` with `from`, `to`, `relation`) exist? The build STOPS if either is absent or empty.
+15. Do both `research/sitemap.json` (fields: `path`, `page_type`, `cluster_id`) and `research/internal-link-map.json` (fields: `links[]` with `from_path`, `to_path`, `relation`) exist? The build STOPS if either is absent or empty.
 16. Is `.dev.vars` gitignored before the first commit? (`references/emdash-scaffold.md` §3 gate.)
 17. Is the `worker_loaders` block in `wrangler.jsonc` commented out?
 18. Are `src/live.config.ts`, `emdash-env.d.ts`, and `worker-configuration.d.ts` untouched? (R2 do-not-edit guardrails — pin emdash version per client, never modify these files.)
