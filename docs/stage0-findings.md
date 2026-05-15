@@ -254,15 +254,38 @@ equivalent, usable output. Sitemap and robots decided independently.
 
 | Emitter | emdash native equivalent? | Verdict |
 |---|---|---|
-| `astro-robots-txt` (Nico, `/robots.txt`) | **Yes — provably equivalent and usable.** emdash serves a valid `/robots.txt` (HTTP 200, `text/plain`) natively on every deploy: allow-all, `Disallow: /_emdash/`, absolute `Sitemap:` directive, plus a custom-robots override hook from SEO settings. Evidence: verbatim 200 body above + `robots.txt.ts` source. | **DROP `astro-robots-txt`** — emdash's native robots.txt is equivalent and arguably better (it also hides the `/_emdash/` admin surface, which Nico's bare `robotsTxt()` does not). **Reconciliation required:** emdash's robots points at `/sitemap.xml` (its own path), not Nico's `/sitemap-index.xml`. If Nico's sitemap is kept (below), either (a) set emdash SEO-settings `robotsTxt` to a custom value referencing `/sitemap-index.xml`, or (b) accept two sitemap pointers. Net still DROP the `astro-robots-txt` integration; manage robots via emdash SEO settings. |
-| `@astrojs/sitemap` (Nico, `/sitemap-index.xml`) | **No — not equivalent.** emdash's `/sitemap.xml` returns HTTP 200 with valid XML, but **empty** (zero `<sitemap>` children) for this template — it indexes `has_seo=1` *content collections*, not the prerendered marketing/service/location *pages* the plugin's whole value rests on. emdash emits *a* sitemap, but it omits the content pages. | **KEEP `@astrojs/sitemap` — with-reconciliation, NOT drop.** Per the task's explicit nuance: emdash emits a sitemap but it omits the content pages, so this is keep-with-reconciliation, not drop. emdash's empty `/sitemap.xml` does not provably do Nico's job (listing the actual built pages). Reconciliation items: (1) path divergence — emdash owns `/sitemap.xml`, Nico's lives at `/sitemap-index.xml`; both can coexist (no path collision) but it is two sitemaps; (2) longer-term, if marketing pages are modelled as a `has_seo=1` emdash collection, emdash's native sitemap could subsume Nico's — re-evaluate then. For now KEEP. |
+| `astro-robots-txt` (Nico, `/robots.txt`) | **Yes — provably equivalent and usable.** emdash serves a valid `/robots.txt` (HTTP 200, `text/plain`) natively on every deploy: allow-all, `Disallow: /_emdash/`, absolute `Sitemap:` directive, plus a custom-robots override hook from SEO settings. Evidence: verbatim 200 body above + `robots.txt.ts` source. | **DROP `astro-robots-txt`** — emdash's native robots.txt is equivalent: it additionally disallows the `/_emdash/` admin surface, which Nico's bare `astro-robots-txt` does not. Net DROP the `astro-robots-txt` integration; manage robots via emdash SEO settings. **This DROP is gated by the Reconciliation prerequisite below — do not act on it until that is resolved.** |
+| `@astrojs/sitemap` (Nico, `/sitemap-index.xml`) | **No — not equivalent.** emdash's `/sitemap.xml` returns HTTP 200 with valid XML, but **empty** (zero `<sitemap>` children) for this template — it indexes `has_seo=1` *content collections*, not the prerendered marketing/service/location *pages* the plugin's whole value rests on. emdash emits *a* sitemap, but it omits the content pages. | **KEEP `@astrojs/sitemap` — with-reconciliation, NOT drop.** Per the task's explicit nuance: emdash emits a sitemap but it omits the content pages, so this is keep-with-reconciliation, not drop. emdash's empty `/sitemap.xml` does not provably do Nico's job (listing the actual built pages). Reconciliation items: (1) path divergence — emdash owns `/sitemap.xml`, Nico's lives at `/sitemap-index.xml`; both can coexist (no path collision) but it is two sitemaps; (2) *Forward-looking note (NOT a Stage-0 finding — future-plan consideration):* if marketing pages are later modelled as a `has_seo=1` emdash collection, emdash's native sitemap could subsume Nico's; re-evaluate then. For now KEEP. |
+
+> ### ⚠ Reconciliation prerequisite (blocks acting on the robots-DROP)
+>
+> **PREREQUISITE — must be resolved before `astro-robots-txt` is removed.**
+> emdash's native robots.txt emits `Sitemap: <origin>/sitemap.xml` (its own
+> path, currently an *empty* sitemap), NOT Nico's `@astrojs/sitemap`
+> `/sitemap-index.xml`. Because the sitemap-KEEP verdict means Nico's real
+> sitemap lives at `/sitemap-index.xml`, dropping `astro-robots-txt` while
+> emdash's robots points only at the empty `/sitemap.xml` would ship a
+> robots.txt that advertises an empty sitemap and never references the real
+> one.
+>
+> **Resolution required (pick one), decided in Plan 4/6 BEFORE removing
+> `astro-robots-txt`:**
+>
+> - **(a)** Set a custom robots.txt via emdash SEO settings whose `Sitemap:`
+>   directive points at Nico's `/sitemap-index.xml`; or
+> - **(b)** Keep both sitemaps and explicitly accept dual `Sitemap:` pointers
+>   (emdash's `/sitemap.xml` + Nico's `/sitemap-index.xml`).
+>
+> Until this decision is made and applied, the robots-DROP is **blocked**.
+> Tracked item for Plan 4/6.
 
 Per-emitter summary, evidence-based and consistent with default-keep /
 drop-only-on-proof:
 
 - **Robots: DROP Nico's `astro-robots-txt`** — emdash provably emits an
-  equivalent, usable, arguably-superior `/robots.txt` natively (verbatim 200
-  evidence). Reconcile the sitemap pointer via emdash SEO settings.
+  equivalent `/robots.txt` natively (verbatim 200 evidence) that additionally
+  disallows `/_emdash/`. **Gated by the Reconciliation prerequisite above —
+  blocked until the sitemap-pointer decision is made in Plan 4/6.**
 - **Sitemap: KEEP Nico's `@astrojs/sitemap` (with reconciliation)** — emdash's
   native `/sitemap.xml` is HTTP 200 and valid but **empty of content pages**
   for this content model; it does not provably replicate Nico's page-graph
