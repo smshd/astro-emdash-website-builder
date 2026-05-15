@@ -257,16 +257,20 @@ The footer is not an afterthought. Build it with:
 
 ## Project File Structure
 
-Build every file listed below. Do not skip any.
+You are building INTO an existing emdash scaffold. Do NOT recreate the scaffold — only add your files. The emdash scaffold already provides `package.json`, `astro.config.mjs`, `wrangler.jsonc`, `.dev.vars`, `emdash-env.d.ts`, `worker-configuration.d.ts`, and `src/live.config.ts`.
+
+**Do NOT create `content.config.ts` or any `.md` content collection.** Content lives in `seed/seed.json` as emdash collections. The files below are the ones YOU must add to the scaffold.
 
 ```
 src/
-├── content.config.ts
-├── content/
-│   ├── services/           (one .md per service)
-│   └── locations/          (one .md per location)
+├── styles/
+│   └── tailwind.css          ← YOU CREATE (Tailwind v4 @theme tokens)
+├── icons/                    ← YOU CREATE (SVG icon components)
 ├── data/
-│   └── site-config.ts
+│   └── site-config.ts        ← YOU CREATE (onboarding-derived constants)
+├── plugins/
+│   └── marketing-blocks/
+│       └── index.ts          ← YOU CREATE (marketing-blocks plugin entry)
 ├── components/
 │   ├── BaseHead.astro
 │   ├── Header.astro
@@ -294,18 +298,25 @@ src/
 │   ├── BaseLayout.astro
 │   ├── ServiceLayout.astro
 │   └── LocationLayout.astro
-└── pages/
-    ├── index.astro
-    ├── about.astro
-    ├── contact.astro
-    ├── services/
-    │   ├── index.astro
-    │   └── [slug].astro
-    ├── locations/
-    │   ├── index.astro
-    │   └── [slug].astro
-    └── api/
-        └── contact.ts
+├── pages/
+│   ├── index.astro
+│   ├── about.astro
+│   ├── contact.astro
+│   ├── services/
+│   │   ├── index.astro
+│   │   └── [slug].astro      ← emdash-query page (Task 6), NOT getStaticPaths
+│   ├── locations/
+│   │   ├── index.astro
+│   │   └── [slug].astro      ← emdash-query page (Task 6), NOT getStaticPaths
+│   └── api/
+│       └── contact.ts
+└── live.config.ts             ← DO NOT EDIT (R2 seam — emdash owns this)
+
+emdash-env.d.ts                ← DO NOT EDIT (R2 seam)
+worker-configuration.d.ts      ← DO NOT EDIT (R2 seam)
+
+seed/
+└── seed.json                  ← YOU EDIT (add emdash collection schemas — Task 6)
 
 public/
 ├── llms.txt
@@ -321,140 +332,137 @@ public/
 
 ### astro.config.mjs
 
-```javascript
-import { defineConfig } from 'astro/config';
-import tailwind from '@astrojs/tailwind';
-import cloudflare from '@astrojs/cloudflare';
-import sitemap from '@astrojs/sitemap';
-import robotsTxt from 'astro-robots-txt';
+**EDIT the scaffolded file — do NOT replace it.** The emdash integration block (`emdash({ database: d1(...), storage: r2(...), plugins:[{ id:"marketing-blocks", ... }] })`), `output: "server"`, and the Cloudflare Workers adapter must remain exactly as scaffolded. Only ADD:
 
-export default defineConfig({
-  site: 'https://YOUR_DOMAIN.com',  // Replace with actual domain or placeholder
-  output: 'hybrid',
-  adapter: cloudflare({
-    imageService: 'cloudflare',
-    platformProxy: { enabled: true },
-  }),
-  integrations: [
-    tailwind(),
-    sitemap(),
-    robotsTxt(),
-  ],
-  image: {
-    service: { entrypoint: 'astro/assets/services/cloudflare' },
-  },
-});
+```js
+// Add to top imports:
+import tailwindcss from "@tailwindcss/vite";
+import sitemap from "@astrojs/sitemap";
+
+// In defineConfig, add/edit only these fields:
+//   site: "https://CLIENT_DOMAIN",          // from onboarding
+//   integrations: [ ...existing emdash/react/icon..., sitemap() ],
+//   vite: { plugins: [tailwindcss()], ssr: { ...keep existing... } },
 ```
+
+- Do NOT add `@astrojs/tailwind` — Tailwind v4 is wired via `@tailwindcss/vite` in `vite.plugins`.
+- Do NOT add `astro-robots-txt` — emdash emits robots natively. The DROP + reconciliation is Plan 4/6 and is currently blocked.
+- Do NOT set `image.service` to the Cloudflare entrypoint — emdash R2 media handles images.
+- Do NOT change `output` from `"server"` or modify the Cloudflare adapter config.
 
 ### wrangler.jsonc
 
+**EDIT the scaffolded file — do NOT replace it.** Leave `main: "./src/worker.ts"`, `d1_databases`, `r2_buckets`, and `compatibility_*` exactly as scaffolded. The ONLY edit is to comment out the `worker_loaders` block (see `references/emdash-scaffold.md` §2):
+
 ```jsonc
-{
-  "name": "business-website",  // Replace with slugified business name
-  "main": "dist/_worker.js/index.js",
-  "compatibility_flags": ["nodejs_compat"],
-  "assets": {
-    "binding": "ASSETS",
-    "directory": "./dist"
-  },
-  "vars": {
-    "RESEND_API_KEY": ""
+// "worker_loaders": [
+//   { ... }   // comment out entire block — not needed for marketing sites
+// ],
+```
+
+Do NOT change `main` to `dist/_worker.js/index.js` — that is Nico's Pages pattern; emdash uses Workers with `src/worker.ts`.
+
+### src/styles/tailwind.css
+
+Tailwind v4 has no `tailwind.config.mjs` — tokens are declared in CSS via `@theme`. Create `src/styles/tailwind.css`:
+
+```css
+@import "tailwindcss";
+
+/*
+ * Layering note (emdash Base.astro lines 217–225):
+ * emdash's theme.css sits in @layer base.
+ * This file must be @imported AFTER theme.css in your layout so that
+ * Tailwind utilities (unlayered) win over emdash's @layer base tokens,
+ * while still inheriting emdash's CSS custom properties.
+ * In BaseLayout.astro: import theme.css first, then tailwind.css.
+ */
+
+:root {
+  /* Derive from onboarding primary hex — e.g. #4F46E5 → 79, 70, 229 */
+  --color-primary-rgb: R, G, B;
+}
+
+@theme {
+  /* Color scale — populate from onboarding brand palette */
+  --color-primary-50: [lightest tint];
+  --color-primary-100: [light tint];
+  --color-primary-500: [PRIMARY_HEX];
+  --color-primary-600: [darker shade];
+  --color-primary-700: [darkest shade];
+  --color-primary-900: [near-black];
+
+  --color-secondary-500: [SECONDARY_HEX];
+  --color-secondary-600: [darker shade];
+
+  --color-accent-500: [ACCENT_HEX];
+
+  --color-neutral-50: [NEUTRAL_LIGHT_HEX];
+  --color-neutral-100: [slightly darker neutral];
+  --color-neutral-200: [skeleton placeholder color];
+  --color-neutral-900: [NEUTRAL_DARK_HEX];
+
+  /* Typography */
+  --font-display: "Geist", "Inter", system-ui, sans-serif;
+  --font-sans: "Inter", system-ui, sans-serif;
+
+  /* Border radius */
+  --radius-4xl: 2rem;
+
+  /* Spacing */
+  --spacing-18: 4.5rem;
+  --spacing-88: 22rem;
+
+  /* Colored brand shadows (use --color-primary-rgb from :root above) */
+  --shadow-brand-sm: 0 1px 3px rgba(var(--color-primary-rgb), 0.12);
+  --shadow-brand: 0 4px 14px rgba(var(--color-primary-rgb), 0.15);
+  --shadow-brand-lg: 0 10px 30px rgba(var(--color-primary-rgb), 0.20);
+  --shadow-brand-xl: 0 20px 50px rgba(var(--color-primary-rgb), 0.25);
+
+  /* Animations */
+  --animate-fade-up: fadeUp 0.6s ease-out forwards;
+  --animate-fade-in: fadeIn 0.4s ease-out forwards;
+  --animate-shimmer: shimmer 2s linear infinite;
+  --animate-float: float 6s ease-in-out infinite;
+  --animate-draw-check: drawCheck 0.6s ease-out forwards;
+}
+
+@layer utilities {
+  /* Noise background — used by GrainOverlay and CTA section */
+  .bg-noise {
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.5'/%3E%3C/svg%3E");
   }
+}
+
+@keyframes fadeUp {
+  0%   { opacity: 0; transform: translateY(20px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  0%   { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+@keyframes shimmer {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-10px); }
+}
+
+@keyframes drawCheck {
+  0%   { stroke-dashoffset: 100; }
+  100% { stroke-dashoffset: 0; }
 }
 ```
 
-### tailwind.config.mjs
-
-Use the color palette provided by the orchestrator. Build a full design token system with visual depth utilities:
-
-```javascript
-/** @type {import('tailwindcss').Config} */
-export default {
-  content: ['./src/**/*.{astro,html,js,jsx,md,mdx,svelte,ts,tsx,vue}'],
-  theme: {
-    extend: {
-      colors: {
-        primary: {
-          50: '[lightest tint]',
-          100: '[light tint]',
-          500: '[PRIMARY_HEX]',   // Main brand color from onboarding
-          600: '[darker shade]',
-          700: '[darkest shade]',
-          900: '[near-black]',
-        },
-        secondary: {
-          500: '[SECONDARY_HEX]',
-          600: '[darker shade]',
-        },
-        accent: {
-          500: '[ACCENT_HEX]',
-        },
-        neutral: {
-          50: '[NEUTRAL_LIGHT_HEX]',
-          100: '[slightly darker neutral]',
-          200: '[skeleton placeholder color]',
-          900: '[NEUTRAL_DARK_HEX]',
-        },
-      },
-      fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
-        display: ['Geist', 'Inter', 'system-ui', 'sans-serif'],
-      },
-      borderRadius: {
-        '4xl': '2rem',
-      },
-      spacing: {
-        '18': '4.5rem',
-        '88': '22rem',
-      },
-      backgroundImage: {
-        'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
-        'noise': "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.5'/%3E%3C/svg%3E\")",
-      },
-      boxShadow: {
-        'brand-sm': '0 1px 3px rgba(var(--color-primary-rgb), 0.12)',
-        'brand': '0 4px 14px rgba(var(--color-primary-rgb), 0.15)',
-        'brand-lg': '0 10px 30px rgba(var(--color-primary-rgb), 0.20)',
-        'brand-xl': '0 20px 50px rgba(var(--color-primary-rgb), 0.25)',
-      },
-      animation: {
-        'fade-up': 'fadeUp 0.6s ease-out forwards',
-        'fade-in': 'fadeIn 0.4s ease-out forwards',
-        'shimmer': 'shimmer 2s linear infinite',
-        'float': 'float 6s ease-in-out infinite',
-        'draw-check': 'drawCheck 0.6s ease-out forwards',
-      },
-      keyframes: {
-        fadeUp: {
-          '0%': { opacity: '0', transform: 'translateY(20px)' },
-          '100%': { opacity: '1', transform: 'translateY(0)' },
-        },
-        fadeIn: {
-          '0%': { opacity: '0' },
-          '100%': { opacity: '1' },
-        },
-        shimmer: {
-          '0%': { transform: 'translateX(-100%)' },
-          '100%': { transform: 'translateX(100%)' },
-        },
-        float: {
-          '0%, 100%': { transform: 'translateY(0)' },
-          '50%': { transform: 'translateY(-10px)' },
-        },
-        drawCheck: {
-          '0%': { strokeDashoffset: '100' },
-          '100%': { strokeDashoffset: '0' },
-        },
-      },
-    },
-  },
-  plugins: [],
-};
-```
-
-Define `--color-primary-rgb` as a CSS custom property in your global styles (e.g., `:root { --color-primary-rgb: R, G, B; }`) derived from the primary hex.
-
 ### tsconfig.json
+
+Keep the emdash scaffolded `tsconfig.json` exactly — do NOT replace the `extends` value. Only ADD `compilerOptions.paths` aliases:
 
 ```json
 {
