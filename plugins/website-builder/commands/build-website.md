@@ -60,6 +60,41 @@ Do not proceed until the user confirms.
 
 ---
 
+## STEP 1.5: SEO Research & Architecture (Stage 2 — DataForSEO)
+
+This runs AFTER onboarding is confirmed and BEFORE any palette extraction, scaffolding, or specialist-agent work. No website content is written until John approves the data-backed sitemap and per-page keyword targets.
+
+### Spawn the seo-researcher agent
+
+Using the Task tool, spawn the **seo-researcher** agent. Pass it:
+- Business name and primary service (Q1, Q2)
+- The full services list with descriptions and differentiators (Q2)
+- The primary city and all additional cities/service areas (Q3) — these are the AU locations all DataForSEO calls must be scoped to
+- The client's own website domain if known (from Q1 or onboarding)
+- The tone preference (Q5)
+
+Instruct it to run the full 7-step methodology in its agent specification and write the four output artifacts plus `research-summary.md` into a `research/` folder in the current project working directory. It returns the absolute path to `research/research-summary.md`.
+
+Wait for the seo-researcher agent to complete before proceeding.
+
+### MANDATORY GATE: John approves the data-backed sitemap + per-page keyword targets
+
+Read `research/research-summary.md` and present its contents to the user. Then ask, using `AskUserQuestion`:
+
+"Here is the data-backed sitemap and the per-page keyword targets from the SEO research (DataForSEO, location-scoped to your cities). This determines exactly which pages get built and what each one targets — nothing is written until you approve it.
+
+- Proposed pages: [list path · page type · primary keyword · volume · difficulty · funnel]
+- TOFU/blog backlog: [count + top topics]
+- Internal-link plan: [counts by relation]
+- Any long-tail substitutions and why: [list]
+- DataForSEO calls used this run: [tally]
+
+Do you approve this sitemap and these keyword targets? Type YES to proceed to the build, or tell me what to change (add/remove a page, retarget a keyword, change a location). I will re-run or adjust the research and ask again."
+
+Do not proceed past this gate until the user explicitly approves. If the user requests changes, re-spawn or adjust the seo-researcher run, regenerate the artifacts, and re-present this gate. The four artifacts in `research/` are the locked input for the seo-writer and seo-auditor — they must be approved before STEP 2.
+
+---
+
 ## STEP 2: Color Palette Extraction (Conditional)
 
 If the user provided a screenshot path in Q6, use the **Skill tool** to call `nano-banana-pro` in analysis mode on the screenshot:
