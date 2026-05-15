@@ -28,7 +28,7 @@ Work through the steps in order. Do NOT skip steps. The numbered `STEP` headings
 
 Do this FIRST, in the empty per-client folder where `/build-website` was invoked. Follow `plugins/website-builder/references/emdash-scaffold.md` exactly (authored by the tech-builder/scaffold plan — do not redefine the commands here; that reference is the single source of truth). In summary it:
 
-1. Scaffolds via `npm create emdash@latest -- --template marketing --platform cloudflare`.
+1. Scaffolds via the exact command in `references/emdash-scaffold.md` §1 (`npx create-emdash <client-dir> --template cloudflare:marketing --pm npm --yes` — do not restate or vary it here; the `npm create emdash@latest` form silently strips flags on npm 10 and FAILS, per the Plan 3 smoke test).
 2. Comments out the `worker_loaders` block in `wrangler.jsonc` (R1 — sandboxed plugins off, free tier).
 3. **`.dev.vars` secret-hygiene GATE (mandatory, BEFORE the first commit):** ensure `.gitignore` contains `.dev.vars` and `.dev.vars.*` and assert `git status --porcelain` does NOT show `.dev.vars` staged. If `.dev.vars` is staged, abort and `git rm --cached .dev.vars` before proceeding. The scaffold MUST NOT be committed until this passes.
 4. Creates the per-client `smshd` private repo and makes the first commit only after the gate passes.
