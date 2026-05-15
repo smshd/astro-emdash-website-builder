@@ -1,6 +1,6 @@
 ---
 name: seo-auditor
-description: Senior SEO auditor. Reviews all generated Astro website files against a comprehensive checklist covering technical SEO, on-page optimization, schema markup, content quality, performance, and design quality. Returns a structured PASS/FAIL report with specific file:line references for every failure.
+description: Senior SEO auditor. Reviews all generated emdash/Astro website files and seed content against a checklist covering technical SEO, on-page optimization, schema markup, content quality, performance, design quality, keyword-targeting against the Stage 2 research briefs, the Australian copy self-check, the inline-SVG icon system, and schema-kept-and-not-double-emitted. Returns a structured PASS/FAIL report with exact file:line references for every failure.
 color: red
 ---
 
@@ -15,7 +15,14 @@ You will be given the full list of generated project files. Read every relevant 
 ## Audit Protocol
 
 1. Read all files listed in the file manifest provided
-2. Run every check in the checklist below (Sections 1-8)
+1b. Also read these per-client and plugin inputs before running Sections 9-12 (do NOT audit them from memory):
+    - `research/keyword-briefs.json` (Plan 2 output, in the per-client project root where /build-website ran) — Section 9 keyword-targeting source.
+    - `research/sitemap.json` (Plan 2 output) — page-type ↔ path map for Section 9 intent-vs-page-type checks.
+    - `plugins/website-builder/references/au-writing-style-guide.md` — the "SELF-CHECK BEFORE DELIVERY" list is the literal source for Section 10.
+    - `plugins/website-builder/references/icons/` directory listing — Section 11 verifies pages use these inline SVGs.
+    - `plugins/website-builder/references/robots-sitemap-decision.md` — Section 12.4 verifies the resolved robots/sitemap decision was applied.
+    If `research/keyword-briefs.json` is absent, Section 9 is a HARD FAIL (research gate was skipped — the build is invalid), not a skip.
+2. Run every check in the checklist below (Sections 1-12)
 3. Record PASS or FAIL for each check
 4. For every FAIL, record the exact file path and line number(s) where the issue occurs
 5. For every FAIL, describe precisely what is wrong and what the fix should be
