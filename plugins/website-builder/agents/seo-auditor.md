@@ -280,6 +280,33 @@ Source of truth: `research/keyword-briefs.json` (Plan 2 `seo-researcher` output,
 
 ---
 
+## Checklist Section 10: Australian Copy Self-Check
+
+Authoritative source: `plugins/website-builder/references/au-writing-style-guide.md`, the "SELF-CHECK BEFORE DELIVERY" list. Precedence is AU guide > avo-writing-voice > Nico's en-US voice rules. Run every item below over ALL visible client copy in the emdash `seed.json` (every page body, FAQ, CTA, meta title, meta description). Quote the offending text and its `seed.json` JSON path for each failure.
+
+### 10.1 Hard-rule violations (every one is a HARD FAIL — zero tolerance)
+- [ ] **HARD FAIL:** Zero em-dashes anywhere (`—`). En-dashes (`–`) allowed ONLY in number ranges (e.g. `2020–2025`); an en-dash between words is a FAIL.
+- [ ] **HARD FAIL:** Zero "not X, but Y" / "not just X, it's Y" constructions.
+- [ ] **HARD FAIL:** Zero guru-voice declaratives — no "X is the [adjective] Y" aphorisms, no "The single biggest X is Y", "The real X is Y", "The truth about X is Y", "What most people get wrong about X", "Here's the thing about X".
+- [ ] **HARD FAIL:** Australian/UK spelling throughout. Search for and FAIL on any: `organize`, `color`, `center`, `analyze`, `behavior`, `realize`, `favor`, `honor` (and obvious siblings: `optimize`, `prioritize`, `defense`, `traveled`, `jewelry`, `theater`, `counselor`).
+- [ ] **HARD FAIL:** No hype vocabulary: amazing, incredible, fantastic, revolutionary, game-changing, skyrocketing, cutting-edge, world-class, mission-critical, best-in-class, next-level, unparalleled, seamless, supercharge, unlock.
+- [ ] **HARD FAIL:** No 2026 AI-tells vocabulary: underscore, pivotal, comprehensive, nuanced, robust, streamline, tapestry, landscape, realm, navigate, delve, indelible, stark reminder, kaleidoscope, foster, leverage, harness, embark, elevate, empower, transformative, holistic, synergy, ecosystem.
+- [ ] **HARD FAIL:** No transition crutches: Furthermore, Moreover, Additionally, In conclusion, It's worth noting, It's important to note, In today's fast-paced world.
+- [ ] **HARD FAIL:** No bold inside body sentences (bold reserved for standalone pseudo-headers only).
+- [ ] **HARD FAIL:** At most one exclamation mark across the whole site copy; zero multiple-exclamation runs ("!!"); no forced Australian slang ("G'day", "mate", "no worries", "arvo", "fair dinkum") unless it was an explicit client onboarding input.
+- [ ] **HARD FAIL:** No semicolons in conversational body copy; no marketing tricolons of adjectives ("fast, simple, powerful"); no rhetorical tricolons ("it's all about A, B, and C"); no vague timing ("soon", "ASAP", "in due course", "shortly") — must be a specific window.
+
+### 10.2 Voice / Tall Poppy self-check (FAIL = standard, not hard, unless it reads as boasting)
+- [ ] Openings frame as observation from experience, not universal pronouncement.
+- [ ] Sentence lengths vary (no run of identical-shape sentences in any one page body).
+- [ ] Contractions used where natural (you're, we're, don't, it's, that's).
+- [ ] "We"/"our team" for capability claims and credit; "I" only for personal opinion/recommendation.
+- [ ] Never compares to competitors directly; stays on the client's own strengths.
+- [ ] At least one specific number, proper noun, or concrete example per page where the onboarding data allowed it.
+- [ ] Reads like a real Australian operator could have said it out loud (no American-corporate or overt-AI register).
+
+---
+
 ## Output Format
 
 Return your report in this exact format:
