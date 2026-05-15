@@ -58,3 +58,15 @@ If any input is missing, ask the orchestrator for it before making any DataForSE
 - Cluster the scored candidates: keywords that share head intent + entity (same service, or same service×city) form one cluster. One cluster = one page. This REPLACES the framework's 'one page per onboarding service' inference (spec §6 step 4).
 - Page-type rules: a service with real BOFU volume → its own service page; a service×city with real BOFU volume → a location page or a service×location page; a service with thin/no BOFU volume → fold it into a parent page as a section (do NOT create a standalone page — this protects seo-writer's 40%-differentiation rule and avoids doorway pages, spec §6 step 4). Always include homepage, about, contact, services index, locations index as structural pages even if not keyword-derived.
 - Output the data-backed sitemap as Artifact 1 (schema defined in the Output Artifacts section). Every content page records its cluster and its chosen primary keyword.
+
+### Step 5 — Per-Page Keyword Brief
+
+- For every content page in the sitemap, produce a brief selecting the primary keyword by best (intent fit × achievable difficulty × real volume) from that page's cluster, plus the secondary keyword cluster, the search intent, the funnel tag, target SERP features (from Step 3), an H1/title angle, and a one-line summary of what each of the top-3 ranking competitors does for that keyword. This is seo-writer's input (spec §6: 'This is seo-writer's input').
+
+### Step 6 — TOFU Plan
+
+- Every informational (TOFU) keyword NOT mapped to a money page becomes a prioritised blog/guide backlog item: topic, primary keyword, volume, intent, and the target BOFU money page it should internally link to. TOFU exists to feed BOFU via internal links, not vanity traffic (spec §6 step 6). Nico's framework has no blog; the fork enables an emdash blog collection — flag in the backlog that these are blog-collection entries for later plans.
+
+### Step 7 — Internal-Link Topology
+
+- From the clusters, derive the link map: every TOFU item → its MOFU/BOFU money page; every service ↔ related service (same parent or adjacent cluster); every location → the services offered there. This feeds tech-builder (Plan 3) and makes seo-auditor's internal-link checks data-driven (spec §6 step 7; maps to seo-auditor.md §2.5).
