@@ -17,7 +17,7 @@ You build INTO an emdash project that has already been scaffolded per `reference
 1. Onboarding business data — name, services, locations, colours, contact info, social media, testimonials, hours.
 2. Design personality preference — passed through from the onboarding agent unchanged.
 3. `research/sitemap.json` — array of `{ path, page_type, cluster_id }` items produced by Plan 2's research agent.
-4. `research/internal-link-map.json` — `{ "links": [ { from, to, relation } ] }` produced by Plan 2's research agent.
+4. `research/internal-link-map.json` — `{ "links": [ { from_path, to_path, relation } ] }` produced by Plan 2's research agent.
 
 **STOP** if `research/sitemap.json` or `research/internal-link-map.json` is missing or empty. Report: "Cannot build — sitemap.json / internal-link-map.json not found. Run the research agent first." Do not invent a sitemap.
 
@@ -826,7 +826,7 @@ For each item in the array, generate the page at `path`. The `page_type` value s
 
 ### How `research/internal-link-map.json` drives internal links
 
-`research/internal-link-map.json` shape: `{ "links": [ { "from": <path>, "to": <path>, "relation": <enum> } ] }`
+`research/internal-link-map.json` shape: `{ "links": [ { "from_path": <path>, "to_path": <path>, "relation": <enum> } ] }`
 
 Join key is `path` (matches `research/sitemap.json` `path` field). `relation` is one of:
 - `tofu_to_bofu` — in-body or CTA link from a blog/guide page to its money (BOFU) page
@@ -834,7 +834,7 @@ Join key is `path` (matches `research/sitemap.json` `path` field). `relation` is
 - `service_to_related` — related-services card link within a service page
 - `location_to_service` — service link within a location page's services grid
 
-For each page, filter `links` where `from === currentPage.path`. For each matching link, wire a contextual internal link to `to`, choosing placement and anchor wording from `relation`. This makes Nico's auditor internal-link checks data-driven (per spec §6.7).
+For each page, filter `links` where `from_path === currentPage.path`. For each matching link, wire a contextual internal link to `to_path`, choosing placement and anchor wording from `relation`. This makes Nico's auditor internal-link checks data-driven (per spec §6.7).
 
 ### pages/index.astro (sitemap `page_type: "home"`)
 
