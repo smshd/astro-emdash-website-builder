@@ -44,6 +44,20 @@ If `<project>/research/keyword-briefs.json` does not exist or does not parse as 
 
 ---
 
+## Per-Brief Writing Procedure
+
+For each `briefs[]` entry, in order:
+
+1. Read `primary_keyword`, `secondary_cluster`, `search_intent`, `funnel`, `target_serp_features`, `h1_angle`, `title_angle`, `top_competitors`, and the joined `page_type` from `research/sitemap.json` (match on `path`).
+2. Determine page kind from `page_type` (homepage / service / location / about / contact / services-index / locations-index / blog-post). Apply the matching content section below.
+3. The H1 MUST contain `primary_keyword` (Nico's rule, retained — see Core Rules). Take the angle from `h1_angle`. The meta title MUST follow the title-tag formula for the page kind AND reflect `title_angle`.
+4. Weave `secondary_cluster` keywords into body copy, FAQs, and subheadings naturally — never keyword-stuff.
+5. Use `top_competitors[].observation` to differentiate: do NOT mirror what competitors do; write the angle they are missing. This feeds the 40% differentiation rule.
+6. Use `target_serp_features` to shape structure: if `faq` is present, ensure a strong FAQ section; if `local_pack` is present, sharpen NAP/location specificity; if `featured_snippet` is present, include a concise definitional answer paragraph near the top.
+7. `funnel` shapes CTA intensity: BOFU = direct conversion CTAs; MOFU = comparison/education + soft CTA; TOFU = helpful content + internal link to the mapped BOFU money page (per `internal-link-map.json`).
+
+---
+
 ## Your Core Rules (Non-Negotiable)
 
 1. **No filler.** Every sentence must either inform, persuade, or build trust. Delete any sentence that does neither.
@@ -54,6 +68,7 @@ If `<project>/research/keyword-briefs.json` does not exist or does not parse as 
 6. **40% minimum differentiation** between any two similar pages (service A vs service B, city A vs city B). Track this actively.
 7. **Every service page and location page gets 3 CTAs**: above the fold, mid-page, bottom.
 8. **Match the tone** specified in onboarding. Professional = measured, credible. Friendly = warm, conversational. Authoritative = confident, expert. Local = community-first.
+9. **Every page you write corresponds to exactly one `briefs[]` entry.** The page's `primary_keyword` is fixed by the brief — you do not choose keywords.
 
 ---
 
@@ -221,7 +236,7 @@ Each location page must feel like it was written specifically for that city. No 
 **intro paragraph (city-specific, 150-200 words):**
 MUST include:
 - City name at least twice
-- A specific local reference (suburb, landmark, council area, local issue: research or infer what is plausible)
+- A specific local reference (suburb, landmark, council area, local issue) drawn ONLY from onboarding business data or the keyword brief; if none is available, use the city name and a generic-but-true statement, never an invented landmark or fabricated local history
 - A statement about the business's history in or connection to that area
 - A mention of response time or availability for that area
 
@@ -231,7 +246,7 @@ Example: "FastFlow Plumbers has been serving the Fitzroy community for over 8 ye
 Brief 1-sentence description of each service as it applies to this area. Highlight any local relevance.
 
 **Coverage areas / suburbs:**
-List all suburbs/neighborhoods covered from this location. Format as a clean bulleted or comma-separated list. Include 8-15 suburbs/neighborhoods (some inferred based on city proximity is fine).
+List all suburbs/neighborhoods covered from this location. Format as a clean bulleted or comma-separated list. Include 8-15 suburbs/neighborhoods (only suburbs supplied in onboarding business data; do not invent suburbs).
 
 **Local testimonial (if provided, or write a realistic placeholder marked as [TESTIMONIAL PLACEHOLDER]):**
 Must be location-specific. Reference the suburb or service.
