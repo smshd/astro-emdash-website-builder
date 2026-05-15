@@ -270,7 +270,11 @@ src/
 │   └── site-config.ts        ← YOU CREATE (onboarding-derived constants)
 ├── plugins/
 │   └── marketing-blocks/
-│       └── index.ts          ← YOU CREATE (marketing-blocks plugin entry)
+│       └── index.ts          ← SCAFFOLDED BY EMDASH — do NOT recreate or overwrite.
+│                                Exports `createPlugin()` (default export). Edit ONLY to
+│                                add new portableTextBlocks for client-specific block types;
+│                                the five marketing.* types (hero, features, testimonials,
+│                                pricing, faq) are pre-defined by the template.
 ├── components/
 │   ├── BaseHead.astro
 │   ├── Header.astro

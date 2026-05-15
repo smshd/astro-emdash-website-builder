@@ -5,7 +5,9 @@
 // Why this exists: `npx emdash dev` migrates the local D1 SQLite DB then, on
 // Windows, dies with `spawn npx ENOENT` (emdash CLI spawns a bare `npx` with
 // no `.cmd` suffix). The marketing-cloudflare template's `npm run dev`
-// (`astro dev`) never migrates/seeds, so the first request 500s. This script
+// (`astro dev`) never migrates/seeds, so the first request 500s. Additionally,
+// spawning `npx.cmd` with shell:false on Windows throws EINVAL — the Astro dev
+// step requires shell:true on Windows (smoke-tested Plan 3 Task 8). This script
 // performs the verified two-step: migrate via the CLI (tolerate its Windows
 // crash), then start Astro directly carrying the portable EMDASH_DATABASE_URL.
 //
@@ -41,11 +43,12 @@ console.log(`[emdash-dev] EMDASH_DATABASE_URL=${dbUrl}`);
 // then crashes (expected); we only need the migration side effect. Give it a
 // bounded window, then move on regardless of how it exited.
 console.log("[emdash-dev] step 1: migrating database via `npx emdash dev` (its Windows crash is expected)…");
+// On Windows, .cmd launchers require shell:true (spawn EINVAL / early-exit otherwise).
 spawnSync(npxCmd, ["emdash", "dev"], {
   cwd: projectDir,
   stdio: "inherit",
   timeout: 90_000,
-  shell: false,
+  shell: isWin,
 });
 
 if (!existsSync(dbPath)) {
@@ -59,11 +62,12 @@ if (!existsSync(dbPath)) {
 console.log("[emdash-dev] step 1 ok: data.db migrated.");
 
 // Step 2: start Astro directly carrying the env var the emdash CLI would set.
+// On Windows, .cmd launchers require shell:true (spawn EINVAL otherwise).
 console.log(`[emdash-dev] step 2: starting Astro on :${port} (seed applies on first request)…`);
 const astro = spawn(npxCmd, ["astro", "dev", "--port", port], {
   cwd: projectDir,
   stdio: "inherit",
-  shell: false,
+  shell: isWin,
   env: { ...process.env, EMDASH_DATABASE_URL: dbUrl },
 });
 

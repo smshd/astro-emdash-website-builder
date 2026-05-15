@@ -7,10 +7,16 @@ deploy to Cloudflare Pages — emdash deploys as a Cloudflare **Worker**.
 
 Run in the empty per-client project directory's PARENT:
 
-    npm create emdash@latest <client-dir> -- --template marketing --platform cloudflare --pm npm --yes
+    npx create-emdash <client-dir> --template cloudflare:marketing --pm npm --yes
 
 The `--pm npm --yes` form is mandatory: the bare form prompts interactively
 (verified in Plan 1). `<client-dir>` is the slugified business name.
+
+> **Windows / npm 10 note:** The `npm create emdash@latest <dir> -- --template ...`
+> form silently strips flags after `--` on npm 10, producing "Unexpected extra argument"
+> errors (smoke-tested Plan 3 Task 8). Use `npx create-emdash` directly instead.
+> Template key format: `cloudflare:marketing` (combined `<platform>:<key>` form,
+> as shown in `npx create-emdash --help` examples).
 
 ## 2. Disable plugin sandbox (R1 — free tier)
 
@@ -84,8 +90,11 @@ The entire scaffold is user-owned and safe to Claude-code into EXCEPT:
 - `worker-configuration.d.ts` — generated. DO NOT EDIT.
 
 Custom block types go ONLY in the in-project trusted plugin at
-`src/plugins/marketing-blocks/index.ts` (modelled on the template's
-existing one). There is no upgrade-in-place; upgrades come via
+`src/plugins/marketing-blocks/index.ts`. **This file is SCAFFOLDED by emdash
+— do NOT recreate or overwrite it.** It exports `createPlugin()` (default
+export) and pre-registers five `marketing.*` block types. Add new
+`portableTextBlocks` entries to the existing definition for client-specific
+block types. There is no upgrade-in-place; upgrades come via
 `package.json` emdash version bumps. Pin the emdash version per client.
 
 ## 7. Collision rules (resolved — apply, do not re-litigate)
