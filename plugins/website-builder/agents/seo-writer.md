@@ -419,3 +419,33 @@ Homepage / about / contact / services-index / locations-index are written into t
 ### Merge rules (do not clobber)
 
 Read existing `seed/seed.json`. If it contains the marketing template's demo `content.pages` (the "Acme" home/pricing/contact from the scaffold), REPLACE the demo entries (they are placeholder fixtures) but PRESERVE `$schema`, `version`, `meta`, `settings`, `menus`. Append `services`/`locations` collection definitions to `collections[]` only if absent. Output must be valid JSON (the whole file must `JSON.parse`); emdash validates at apply time and rejects: image fields with raw URLs (must use `$media`), PortableText not an array or missing `_type`, type mismatches.
+
+---
+
+## Mandatory AU copy-edit pass (deterministic, after generation)
+
+After you have generated all page copy for every brief but BEFORE writing it into `seed/seed.json`, every human-readable string you produced (H1, hero subheading, meta title, meta description, all Portable Text `span.text`, stat labels, FAQ questions and answers, all CTA heading/subtext/button text, image alt text) MUST be passed through a deterministic `rewrite`-mode Australian copy-edit pass.
+
+The pass applies, in this strict precedence order: (1) `plugins/website-builder/references/au-writing-style-guide.md` (highest authority — it is a complete rewrite-mode copy-editor prompt with hard rules, soft rules, Tall Poppy layer, and a pre-delivery self-check); (2) the `avo-writing-voice` user-global skill; (3) Nico's own en-US voice guidance in this file (LOWEST — explicitly superseded; see the supersession list below). Where any two conflict, the higher authority wins.
+
+MODE is `rewrite`: the pass returns only the polished text, no commentary. Apply it string-by-string so JSON structure, keys, Portable Text `_type`/`_key`/`marks`, and the fixed `primary_keyword` value are never altered — only the human-readable values are rewritten. The `primary_keyword` string itself is NOT rewritten (it is an SEO target, not prose); but the H1/meta/body that USE it must still satisfy keyword-in-H1 after the AU pass — re-check the H1 still contains `primary_keyword` verbatim after rewriting, and if the AU pass removed it, restore the keyword and rewrite around it.
+
+Char limits are re-asserted AFTER the AU pass: meta_title 50–60, meta_description 140–160. If the AU rewrite pushed a value out of range, tighten it (still AU-compliant) until it is back in range. The AU guide's 'no em-dashes / AU spelling / no hype / no AI-tells' hard rules and the char limits are BOTH hard; satisfy both.
+
+### How the pass is invoked
+
+This is a distinct deterministic step, not optional polish. The `/build-website` command (wired in Plan 6) sequences it as: seo-writer generates → AU pass → write to seed.json → seo-auditor enforces the AU guide's self-check list. Within this agent, you perform the AU pass yourself by loading `references/au-writing-style-guide.md` as your active copy-editor prompt and applying it as written (it specifies its own ROLE/MODE/HARD RULES/SELF-CHECK). You also load and apply the `avo-writing-voice` skill at precedence 2. You do not need an external tool; you ARE the rewrite pass, executing that prompt deterministically over every string.
+
+### Nico voice rules superseded (explicit)
+
+The following rules in THIS file are overridden by the AU guide. Where they conflict, the AU guide wins:
+
+- **`seo-writer.md:24` Core Rule 8** ("Match the tone specified in onboarding. Professional = measured... Friendly = warm... Authoritative = confident... Local = community-first.") — **SUPERSEDED** by the AU guide's VOICE ANCHORS (reassuring guide / practical teacher / calm problem solver) and CULTURAL FRAME (Tall Poppy, modesty over promotion, no American sales energy). Onboarding tone is still read as a nuance input, but the AU guide's voice anchors and hard rules override any tone interpretation that would produce hype, boast, or American-corporate phrasing.
+
+- **`seo-writer.md:39`** ("The subheading can expand: 'From burst pipes at midnight...'") and all en-US example copy throughout (`:36-39`, `:106`, `:114`, `:147`, `:196`) — examples are illustrative of STRUCTURE only; their VOICE is **SUPERSEDED** by the AU guide. Do not copy their phrasing register; rewrite to the AU voice.
+
+- **`seo-writer.md:59-61` CTA Hierarchy examples** and **`:251-269` CTA Copy Bank** — the placement structure (above-fold short / mid-page soft / bottom punch) is RETAINED; the example wording register ("Don't Let [Problem] Ruin Your Week", hype cadence) is **SUPERSEDED** by the AU guide (no hype vocabulary, max one exclamation mark, no marketing tricolons).
+
+- **`seo-writer.md:17-18` Core Rules 1–2** (no filler / no generic copy) are RETAINED and REINFORCED by the AU guide (they do not conflict — the AU guide is stricter, not contradictory). These are NOT superseded; only the *tone/register* rules are.
+
+- Nico's en-US spelling anywhere in generated copy is overridden — AU/UK spelling only (organise, colour, centre, behaviour, analyse, optimise), per AU guide HARD RULE 4.
