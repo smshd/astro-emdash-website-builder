@@ -529,3 +529,86 @@ large site):**
 multi-location service business; the per-entry footprint is ~1–3 rows, storage
 headroom is 150×+, and the only agency-level watch-item is the 10-database
 per-account cap (infra concern, not a per-site blocker).**
+
+## Locked Decisions (feed Plans 2–6)
+
+Synthesis of Open Items A/B/C and their reviews. This is the executable
+contract later plans build from; the Open Items above are the evidence and must
+not be re-litigated.
+
+### Content model — CONFIRMED
+
+The spec's content-model assumption holds, source-verified (Open Item C
+Step 1): emdash is a **wide-table, one-row-per-entry** store
+(`ec_{slug}` table per collection; every field — including `portableText` and
+`json` — is a column on the single entry row, not a row). Therefore:
+
+- `services` and `locations` are re-expressed as **emdash collections in
+  `seed.json`** with **Portable Text** bodies (one entry = one row).
+- Nico's plugin `content.config.ts` + per-`.md` file collections are
+  **discarded** — structurally incompatible with the D1/seed model.
+- **No deviation** from the spec's §4 content-model assumption was found. The
+  one refinement: collections that declare `revisions` support add ~1 row per
+  save (bounded, not a model change).
+
+### SEO — KEEP/DROP list (locked)
+
+Per spec §2 (default-keep Nico's; burden of proof is on dropping). Evidence:
+Open Items A and B.
+
+| Item | Verdict | Reason |
+|---|---|---|
+| `LocalBusinessSchema` (Nico) | **KEEP** | emdash emits no LocalBusiness |
+| `ServiceSchema` (Nico) | **KEEP** | emdash emits no Service |
+| `FAQSchema` / FAQPage (Nico) | **KEEP** | emdash emits none even with visible FAQ |
+| `BreadcrumbSchema` / BreadcrumbList (Nico) | **KEEP** | emdash emits no BreadcrumbList |
+| `WebSiteSchema` (Nico) | **KEEP** | emdash's native `WebSite` is minimal and site-wide; Nico's is homepage-only — different scope, not the identical job |
+| Nico SEO `<head>` enrichment | **KEEP** | emdash omits `og:image`/`twitter:image` and hardcodes `twitter:card=summary` |
+| `astro-robots-txt` (Nico) | **DROP** | emdash provably emits an equivalent, superior `/robots.txt` (also disallows `/_emdash/`) — **but see blocker below** |
+| `@astrojs/sitemap` (Nico) | **KEEP (with reconciliation)** | emdash's native `/sitemap.xml` is valid but empty of content pages — does not provably do Nico's page-graph job |
+
+Net: emdash natively emits **only** `WebSite` JSON-LD + minimal head tags.
+**KEEP ALL of Nico's schema components and Nico's SEO head enrichment. DROP
+only `astro-robots-txt`. KEEP `@astrojs/sitemap` (with reconciliation).**
+
+**BLOCKER on the robots-DROP (Plan 4/6):** the `astro-robots-txt` DROP is
+**gated by the Reconciliation prerequisite** documented in Open Item B
+("⚠ Reconciliation prerequisite"). emdash's native robots.txt advertises
+`Sitemap: <origin>/sitemap.xml` (its own, currently *empty* sitemap), not
+Nico's real `/sitemap-index.xml`. Before `astro-robots-txt` is removed, Plan
+4/6 must pick one: (a) custom emdash SEO-settings robots.txt whose `Sitemap:`
+points at `/sitemap-index.xml`, or (b) explicitly accept dual `Sitemap:`
+pointers. Until that decision is made and applied, **do not remove
+`astro-robots-txt`**.
+
+### D1 — locked
+
+- **Per-site:** a large multi-location service-business site **FITS the
+  Cloudflare D1 free tier** on every dimension — storage ~150×+ headroom,
+  writes/day 0.6 % of cap, reads/day decoupled (CDN-cached). No paid D1 for
+  this client profile.
+- **The one genuine ceiling is AGENCY-INFRA, not per-site:** Cloudflare's
+  **10-databases-per-account** limit (each client site = its own D1). This is
+  **recorded as a risk in the design spec §11**; the agency must provision
+  additional Cloudflare accounts (or move to paid D1) **before the 10th
+  concurrent client site**. It is not a per-site blocker and does not affect
+  any single build.
+
+### New collisions / risks discovered during the spike (not in spec §4 originally)
+
+Each is a discrete tracked item with an owning later plan:
+
+1. **emdash-CLI Windows `spawn npx ENOENT` / non-seeding `npm run dev`**
+   (owner: **Plan 2** — per-client build/scaffold pipeline; cross-ref Plan 1
+   scaffold hardening). `npx emdash dev` migrates the DB then dies with
+   `spawn npx ENOENT` on Windows; the template's `npm run dev`
+   (`astro dev`) never migrates/seeds, so first request 500s. A Windows-safe
+   dev/seed workflow must be built into the pipeline. **Working manual
+   procedure is documented in Open Item A** ("Local-dev / seed procedure").
+   Real product risk for the build pipeline.
+2. **`.dev.vars` `EMDASH_ENCRYPTION_KEY` secret hygiene** (owner: **Plan 2** —
+   per-client repo scaffold; enforced at every per-client build). emdash
+   scaffolding writes a generated `EMDASH_ENCRYPTION_KEY` into `.dev.vars`.
+   Every per-client repo **MUST gitignore `.dev.vars` before the first
+   commit** or the key lands in git history. Mandatory pre-first-commit gate
+   in the scaffold step.
