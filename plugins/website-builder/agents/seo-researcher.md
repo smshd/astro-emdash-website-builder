@@ -70,3 +70,99 @@ If any input is missing, ask the orchestrator for it before making any DataForSE
 ### Step 7 — Internal-Link Topology
 
 - From the clusters, derive the link map: every TOFU item → its MOFU/BOFU money page; every service ↔ related service (same parent or adjacent cluster); every location → the services offered there. This feeds tech-builder (Plan 3) and makes seo-auditor's internal-link checks data-driven (spec §6 step 7; maps to seo-auditor.md §2.5).
+
+## Output Artifacts (STABLE INTERFACE — Plan 4 seo-writer and Plan 6 seo-auditor consume these)
+
+Write all four JSON artifacts plus a human-readable `research-summary.md` into a `research/` folder in the per-client project working directory (the folder where `/build-website` was invoked). Create `research/` if it does not exist. These files are the ONLY interface between this agent and downstream agents — they must be valid JSON, complete, and contain no placeholder/`TBD` values. Downstream plans read these files off disk; do not change these field names without a coordinated spec change.
+
+### Artifact 1 — research/sitemap.json (data-backed sitemap)
+
+```json
+{
+  "generated_at": "ISO-8601 timestamp",
+  "locale": "en-AU",
+  "locations": ["Melbourne, Victoria, Australia", "..."],
+  "pages": [
+    {
+      "path": "/services/hot-water-systems",
+      "page_type": "service | location | service_location | home | about | contact | services_index | locations_index | blog_post",
+      "cluster_id": "string (stable id; matches keyword-briefs + internal-link-map)",
+      "title_working": "short working title",
+      "is_structural": false
+    }
+  ]
+}
+```
+
+### Artifact 2 — research/keyword-briefs.json (per-page keyword briefs)
+
+THIS IS THE LOCKED INTERFACE FOR seo-writer Plan 4 AND seo-auditor Plan 6.
+
+```json
+{
+  "generated_at": "ISO-8601 timestamp",
+  "briefs": [
+    {
+      "path": "/services/hot-water-systems",
+      "cluster_id": "string (matches sitemap.json)",
+      "primary_keyword": "hot water systems melbourne",
+      "primary_keyword_volume": 480,
+      "primary_keyword_difficulty": 27,
+      "secondary_cluster": [
+        { "keyword": "hot water repair melbourne", "volume": 210, "difficulty": 22 }
+      ],
+      "search_intent": "transactional | commercial | comparison | informational | navigational",
+      "intent_source": "dataforseo | heuristic",
+      "funnel": "BOFU | MOFU | TOFU",
+      "target_serp_features": ["local_pack", "faq", "featured_snippet"],
+      "h1_angle": "one-line H1/title angle the writer should take",
+      "title_angle": "one-line meta-title angle",
+      "top_competitors": [
+        { "rank": 1, "url": "https://...", "page_type": "service_page", "observation": "what they do that ranks" }
+      ]
+    }
+  ]
+}
+```
+
+### Artifact 3 — research/tofu-backlog.json (TOFU backlog)
+
+```json
+{
+  "generated_at": "ISO-8601 timestamp",
+  "backlog": [
+    {
+      "topic": "how to choose a hot water system",
+      "primary_keyword": "how to choose hot water system",
+      "volume": 320,
+      "search_intent": "informational",
+      "priority": 1,
+      "target_bofu_path": "/services/hot-water-systems",
+      "collection": "blog"
+    }
+  ]
+}
+```
+
+### Artifact 4 — research/internal-link-map.json (internal-link map)
+
+```json
+{
+  "generated_at": "ISO-8601 timestamp",
+  "links": [
+    { "from_path": "/blog/choosing-hot-water", "to_path": "/services/hot-water-systems", "relation": "tofu_to_bofu" },
+    { "from_path": "/services/hot-water-systems", "to_path": "/services/gas-fitting", "relation": "service_to_related" },
+    { "from_path": "/locations/fitzroy", "to_path": "/services/hot-water-systems", "relation": "location_to_service" }
+  ]
+}
+```
+
+The `relation` field is a closed enum: `tofu_to_bofu`, `mofu_to_bofu`, `service_to_related`, `location_to_service`.
+
+### research-summary.md
+
+A human-readable digest for the John approval gate. MUST contain: the proposed page list (path + page_type + primary keyword + volume + difficulty + funnel), the TOFU backlog count and top 5 topics, the internal-link summary counts by relation, any long-tail substitutions made in Step 3 with reasons, the running DataForSEO call tally (Cost Control), and any `unavailable` data flags. End with the literal line: `Awaiting John's approval — no content will be written until the sitemap + per-page keyword targets are approved.`
+
+## Completion
+
+When done, write all five files, then return to the orchestrator a one-paragraph summary and the absolute path to `research/research-summary.md`. Do NOT proceed to write any website content — your job ends at the artifacts. The orchestrator runs the approval gate.
