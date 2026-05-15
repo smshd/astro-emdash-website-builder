@@ -571,15 +571,15 @@ Net: emdash natively emits **only** `WebSite` JSON-LD + minimal head tags.
 **KEEP ALL of Nico's schema components and Nico's SEO head enrichment. DROP
 only `astro-robots-txt`. KEEP `@astrojs/sitemap` (with reconciliation).**
 
-**BLOCKER on the robots-DROP (Plan 4/6):** the `astro-robots-txt` DROP is
+**BLOCKER on the robots-DROP:** the `astro-robots-txt` DROP is
 **gated by the Reconciliation prerequisite** documented in Open Item B
 ("⚠ Reconciliation prerequisite"). emdash's native robots.txt advertises
 `Sitemap: <origin>/sitemap.xml` (its own, currently *empty* sitemap), not
-Nico's real `/sitemap-index.xml`. Before `astro-robots-txt` is removed, Plan
-4/6 must pick one: (a) custom emdash SEO-settings robots.txt whose `Sitemap:`
-points at `/sitemap-index.xml`, or (b) explicitly accept dual `Sitemap:`
-pointers. Until that decision is made and applied, **do not remove
-`astro-robots-txt`**.
+Nico's real `/sitemap-index.xml`. **Owned by Plan 4 (the seo-writer + emdash
+content/SEO plan): Plan 4 must resolve and document the sitemap-pointer choice
+(custom emdash SEO-settings robots.txt → Nico's /sitemap-index.xml, OR
+explicitly accepted dual pointers). Plan 6 must NOT remove `astro-robots-txt`
+unless Plan 4 has resolved and documented that choice.**
 
 ### D1 — locked
 
@@ -590,9 +590,9 @@ pointers. Until that decision is made and applied, **do not remove
 - **The one genuine ceiling is AGENCY-INFRA, not per-site:** Cloudflare's
   **10-databases-per-account** limit (each client site = its own D1). This is
   **recorded as a risk in the design spec §11**; the agency must provision
-  additional Cloudflare accounts (or move to paid D1) **before the 10th
-  concurrent client site**. It is not a per-site blocker and does not affect
-  any single build.
+  additional Cloudflare accounts, or move to paid D1/Workers Paid, **before the
+  10th concurrent client site**. It is not a per-site blocker and does not
+  affect any single build.
 
 ### New collisions / risks discovered during the spike (not in spec §4 originally)
 
