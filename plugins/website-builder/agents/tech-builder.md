@@ -301,15 +301,16 @@ src/
 ├── pages/
 │   ├── index.astro
 │   ├── about.astro
-│   ├── contact.astro
+│   ├── contact.astro          ← in-page POST handler (no /api/contact route)
 │   ├── services/
 │   │   ├── index.astro
 │   │   └── [slug].astro      ← emdash-query page (Task 6), NOT getStaticPaths
 │   ├── locations/
 │   │   ├── index.astro
 │   │   └── [slug].astro      ← emdash-query page (Task 6), NOT getStaticPaths
-│   └── api/
-│       └── contact.ts
+│   └── posts/
+│       ├── index.astro
+│       └── [slug].astro      ← emdash-query page (Task 6), NOT getStaticPaths
 └── live.config.ts             ← DO NOT EDIT (R2 seam — emdash owns this)
 
 emdash-env.d.ts                ← DO NOT EDIT (R2 seam)
@@ -480,62 +481,82 @@ Keep the emdash scaffolded `tsconfig.json` exactly — do NOT replace the `exten
 
 ---
 
-## Content Collections Schema (content.config.ts)
+## Content Collections Schema (seed/seed.json)
 
-```typescript
-import { defineCollection, z } from 'astro:content';
+Do NOT create `content.config.ts`. Do NOT use Zod. Do NOT create `src/content/*.md` files. Content lives entirely in `seed/seed.json` as emdash Portable Text collections. Plan 4 (seo-writer) writes the actual Portable Text content; Plan 3 defines only the collection schemas.
 
-const services = defineCollection({
-  type: 'content',
-  schema: z.object({
-    title: z.string(),
-    slug: z.string(),
-    metaTitle: z.string().max(60),
-    metaDescription: z.string().min(140).max(160),
-    heroHeading: z.string(),
-    heroSubheading: z.string(),
-    shortDescription: z.string(),
-    longDescription: z.string(),
-    benefits: z.array(z.string()),
-    process: z.array(z.object({
-      step: z.number(),
-      title: z.string(),
-      description: z.string(),
-    })),
-    faqs: z.array(z.object({
-      question: z.string(),
-      answer: z.string(),
-    })),
-    featuredImage: z.string(),
-    featuredImageAlt: z.string(),
-    relatedServices: z.array(z.string()).optional(),
-  }),
-});
+Add the following collections to the `collections` array of `seed/seed.json` (following the conventions in `references/emdash-scaffold.md` and the emdash reference at `references/schema-and-seed.md`). Field types follow emdash's `FIELD_TYPE_TO_COLUMN` mapping: `string`/`text` → TEXT column; `portableText`/`json` → JSON column; `image` → object with `$media` shape. Do NOT add `content` entries — that is Plan 4's job.
 
-const locations = defineCollection({
-  type: 'content',
-  schema: z.object({
-    city: z.string(),
-    state: z.string(),
-    slug: z.string(),
-    metaTitle: z.string().max(60),
-    metaDescription: z.string().min(140).max(160),
-    heroHeading: z.string(),
-    intro: z.string(),
-    servicesOffered: z.array(z.string()),
-    coverageAreas: z.array(z.string()).optional(),
-    localTestimonials: z.array(z.object({
-      name: z.string(),
-      quote: z.string(),
-      service: z.string().optional(),
-    })).optional(),
-    featuredImage: z.string(),
-    featuredImageAlt: z.string(),
-  }),
-});
+### `pages` collection (already in template seed — keep as-is)
 
-export const collections = { services, locations };
+Fields: `title` (string, required), `content` (portableText). Used for `home`, `about`, `contact` entries.
+
+### `services` collection
+
+```json
+{
+  "name": "services",
+  "supports": ["drafts", "revisions", "seo"],
+  "fields": [
+    { "name": "title",              "type": "string",      "required": true, "searchable": true },
+    { "name": "meta_title",         "type": "string" },
+    { "name": "meta_description",   "type": "text" },
+    { "name": "hero_heading",       "type": "string" },
+    { "name": "hero_subheading",    "type": "text" },
+    { "name": "short_description",  "type": "text" },
+    { "name": "body",               "type": "portableText" },
+    { "name": "featured_image",     "type": "image" },
+    { "name": "featured_image_alt", "type": "string" },
+    { "name": "related_services",   "type": "json",        "description": "Array of service slugs" }
+  ]
+}
 ```
+
+The entry slug is the collection entry key (emdash convention). `related_services` is a JSON array of service slugs for the related-services card section.
+
+### `locations` collection
+
+```json
+{
+  "name": "locations",
+  "supports": ["drafts", "revisions", "seo"],
+  "fields": [
+    { "name": "title",              "type": "string",      "required": true, "searchable": true,
+      "description": "Full location label, e.g. 'Plumbing in Sydney'" },
+    { "name": "city",               "type": "string",      "required": true, "searchable": true },
+    { "name": "state",              "type": "string" },
+    { "name": "meta_title",         "type": "string" },
+    { "name": "meta_description",   "type": "text" },
+    { "name": "hero_heading",       "type": "string" },
+    { "name": "intro",              "type": "text" },
+    { "name": "services_offered",   "type": "json",        "description": "Array of service slugs" },
+    { "name": "coverage_areas",     "type": "json",        "description": "Array of suburb/area strings" },
+    { "name": "featured_image",     "type": "image" },
+    { "name": "featured_image_alt", "type": "string" }
+  ]
+}
+```
+
+### `posts` collection (TOFU blog — per spec §6.6)
+
+```json
+{
+  "name": "posts",
+  "supports": ["drafts", "revisions", "search", "seo"],
+  "fields": [
+    { "name": "title",          "type": "string",      "required": true, "searchable": true },
+    { "name": "excerpt",        "type": "text" },
+    { "name": "featured_image", "type": "image" },
+    { "name": "content",        "type": "portableText" }
+  ],
+  "taxonomies": [
+    { "name": "category", "type": "single" },
+    { "name": "tag",      "type": "multiple" }
+  ]
+}
+```
+
+Taxonomy block follows `schema-and-seed.md` conventions.
 
 ---
 
@@ -791,126 +812,164 @@ name, url, potentialAction (SearchAction with query-input)
 
 ## Page Rules
 
-### pages/index.astro (Homepage)
+Pages are **server-rendered** and query emdash collections at request time. There is NO `getStaticPaths`, NO `astro:content`, NO `.md` file collections. All page generation is driven by `research/sitemap.json` (Plan 2 output).
+
+**STOP** if `research/sitemap.json` is absent or empty — report: "Cannot build pages — sitemap.json not found. Run the research agent first." Do not invent a page list.
+
+The canonical query patterns come from the emdash template: `src/pages/index.astro` (single entry) and `posts/[slug].astro` / `posts/index.astro` (collection list + entry). Always use `getEmDashEntry(<collection>, <slug>)` for single entries and `getEmDashCollection(<collection>, { ...options })` for lists.
+
+### How `research/sitemap.json` drives page generation
+
+`research/sitemap.json` shape: `{ path, page_type, cluster_id }[]`
+
+For each item in the array, generate the page at `path`. The `page_type` value selects which section template applies (see per-page rules below). The `cluster_id` is carried through to internal-link resolution so the keyword cluster is available at render time.
+
+### How `research/internal-link-map.json` drives internal links
+
+`research/internal-link-map.json` shape: `{ "links": [ { "from": <path>, "to": <path>, "relation": <enum> } ] }`
+
+Join key is `path` (matches `research/sitemap.json` `path` field). `relation` is one of:
+- `tofu_to_bofu` — in-body or CTA link from a blog/guide page to its money (BOFU) page
+- `mofu_to_bofu` — in-body or CTA link from a mid-funnel page to a BOFU page
+- `service_to_related` — related-services card link within a service page
+- `location_to_service` — service link within a location page's services grid
+
+For each page, filter `links` where `from === currentPage.path`. For each matching link, wire a contextual internal link to `to`, choosing placement and anchor wording from `relation`. This makes Nico's auditor internal-link checks data-driven (per spec §6.7).
+
+### pages/index.astro (sitemap `page_type: "home"`)
+
+Data: `getEmDashEntry("pages", "home")`
 
 Sections in order:
-1. `<Hero variant="homepage">` with primary service + location in H1, split layout, gradient text
+1. `<Hero variant="homepage">` — asymmetric split layout, gradient text, primary service + location in H1
 2. `<SectionDivider variant="wave" />` transitioning to neutral-50
 3. `<WhyUs>` on neutral-50 background with diagonal clip-path
 4. `<SectionDivider variant="curve" />` transitioning back to white
-5. `<ServiceCard>` bento grid (first card featured) with section heading that has an accent-colored keyword
-6. Stats bar with diagonal clip-path: years in business, jobs completed, satisfaction rate, response time. Oversized `text-8xl` numbers with count-up animation and progress bar fill underneath each stat.
-7. `<Testimonials>` with `<GradientMesh variant="section" />` behind it
+5. `<ServiceCard>` bento grid — data from `getEmDashCollection("services")`; first card featured
+6. Stats bar — diagonal clip-path, oversized `text-8xl` numbers, count-up animation
+7. `<Testimonials>` with `<GradientMesh variant="section" />`
 8. `<SectionDivider variant="wave" />` transition
-9. `<LocationCard>` grid with alternating background
+9. `<LocationCard>` grid — data from `getEmDashCollection("locations")`
 10. `<CTA>` full-width with diagonal clip-path, gradient background, decorative circles
 11. `<FAQ>` centered editorial layout with gradient heading keyword
 12. `<SectionDivider variant="curve" />` before footer
 
+Internal links: apply `tofu_to_bofu` / `mofu_to_bofu` links in the CTA or relevant in-body positions.
+
 Schemas: `<WebSiteSchema>`, `<LocalBusinessSchema>`
 
-### pages/services/[slug].astro
+Cache: `Astro.cache.set(cacheHint)` (wrap in try/catch).
+
+### pages/services/index.astro
+
+Data: `getEmDashCollection("services", { orderBy: { published_at: "desc" } })`
+
+Renders all service cards in bento grid. Schemas: `<BreadcrumbSchema>`. Cache: `Astro.cache.set(cacheHint)`.
+
+### pages/services/[slug].astro (sitemap `page_type: "service"`)
+
+Data:
+```astro
+const { slug } = Astro.params;
+const entry = await getEmDashEntry("services", decodeURIComponent(slug));
+if (!entry) return Astro.redirect("/404");
+Astro.cache.set(cacheHint);
+```
 
 Sections in order:
 1. `<Breadcrumb>` (Home > Services > Service Name)
-2. `<Hero variant="inner">` (service-specific heading, multi-stop gradient overlay, Ken Burns on image)
+2. `<Hero variant="inner">` (service-specific heading, multi-stop gradient overlay, Ken Burns on image; data from `entry.data.hero_heading`, `entry.data.featured_image`)
 3. Problem/pain point intro paragraph
 4. Benefits list (gradient icon containers + text)
 5. Process section (numbered steps with oversized step numbers as watermarks)
 6. `<Testimonials>` (service-specific if available)
 7. `<CTA>` (mid-page, gradient variant)
-8. `<FAQ>` (service-specific questions, centered layout)
-9. Related services links (as small `ServiceCard` components)
+8. `<FAQ>` (service-specific questions, centered layout; data from `entry.data.body` Portable Text FAQ blocks)
+9. Related services links — resolve `entry.data.related_services` slugs; also wire `service_to_related` links from internal-link-map
 10. `<CTA>` (bottom, full dramatic variant with clip-path)
 
-Schemas: `<ServiceSchema>`, `<BreadcrumbSchema>`, `<FAQSchema>` (if FAQs)
+Body content via `<PortableText value={entry.data.body} />`.
 
-### pages/locations/[slug].astro
+Schemas: `<ServiceSchema>`, `<BreadcrumbSchema>`, `<FAQSchema>` (if FAQs present)
+
+### pages/locations/index.astro
+
+Data: `getEmDashCollection("locations", { orderBy: { published_at: "desc" } })`
+
+Renders all location cards. Schemas: `<BreadcrumbSchema>`. Cache: `Astro.cache.set(cacheHint)`.
+
+### pages/locations/[slug].astro (sitemap `page_type: "location"`)
+
+Data:
+```astro
+const { slug } = Astro.params;
+const entry = await getEmDashEntry("locations", decodeURIComponent(slug));
+if (!entry) return Astro.redirect("/404");
+Astro.cache.set(cacheHint);
+```
 
 Sections in order:
 1. `<Breadcrumb>` (Home > Locations > City Name)
-2. `<Hero variant="inner">` (city-specific heading, Ken Burns image)
-3. City-specific intro paragraph (must reference the city by name)
-4. Services offered in this location (grid of service cards, bento layout)
-5. Coverage areas / suburbs served list
+2. `<Hero variant="inner">` (city-specific heading from `entry.data.hero_heading`, Ken Burns image)
+3. City-specific intro paragraph (must reference the city by name; data from `entry.data.intro`)
+4. Services offered — resolve `entry.data.services_offered` slugs via `getEmDashCollection("services")`; render as bento grid. Wire `location_to_service` links from internal-link-map.
+5. Coverage areas / suburbs served list — data from `entry.data.coverage_areas`
 6. `<Testimonials>` (location-specific if available)
 7. `<CTA>` with gradient background
 
-Schemas: `<LocalBusinessSchema>` (with location address), `<BreadcrumbSchema>`
+Schemas: `<LocalBusinessSchema>` (with location address from `entry.data`), `<BreadcrumbSchema>`
 
-### pages/about.astro
+### pages/posts/index.astro + pages/posts/[slug].astro (sitemap `page_type: "post"`)
+
+Data pattern mirrors the emdash blog template (`posts/index.astro` and `posts/[slug].astro`):
+- Index: `getEmDashCollection("posts", { orderBy: { published_at: "desc" } })`
+- Detail:
+```astro
+const { slug } = Astro.params;
+const entry = await getEmDashEntry("posts", decodeURIComponent(slug));
+if (!entry) return Astro.redirect("/404");
+Astro.cache.set(cacheHint);
+```
+
+Wire `tofu_to_bofu` and `mofu_to_bofu` internal links from the link-map as in-body CTA links pointing to the relevant money pages.
+
+Schemas: `<BreadcrumbSchema>`, `<WebSiteSchema>` (index only)
+
+### pages/about.astro (sitemap `page_type: "about"`)
+
+Data: `getEmDashEntry("pages", "about")`
 
 - Origin story of the business
 - Team/founder section
-- Values and mission (use WhyUs-style layout with gradient icon containers)
+- Values and mission (WhyUs-style layout with gradient icon containers)
 - Licenses, certifications, awards
 - `<CTA>` at bottom (dramatic variant)
 
-### pages/contact.astro
+Cache: `Astro.cache.set(cacheHint)`.
 
-- Contact form (`<ContactForm>`) with floating labels and animated states
-- Contact details sidebar: phone, email, address, hours (glass-morphism card)
-- Google Maps embed placeholder (or iframe with actual embed)
-- Service area statement
+### pages/contact.astro (sitemap `page_type: "contact"`)
 
-### pages/api/contact.ts
+Data: `getEmDashEntry("pages", "contact")`
 
-```typescript
+Contact submissions use emdash's in-page POST handler pattern (see the scaffolded `src/pages/contact.astro`). Do NOT create `src/pages/api/contact.ts`. Do NOT add a `resend` dependency. Do NOT use `RESEND_API_KEY`.
+
+```astro
+---
 export const prerender = false;
-
-import type { APIRoute } from 'astro';
-
-export const POST: APIRoute = async ({ request }) => {
-  const data = await request.formData();
-
-  // Honeypot check
-  if (data.get('_honey')) {
-    return new Response(JSON.stringify({ success: false }), { status: 400 });
-  }
-
-  const name = data.get('name')?.toString();
-  const email = data.get('email')?.toString();
-  const phone = data.get('phone')?.toString() ?? '';
-  const service = data.get('service')?.toString() ?? '';
-  const message = data.get('message')?.toString();
-
-  if (!name || !email || !message) {
-    return new Response(JSON.stringify({ error: 'Missing required fields' }), { status: 400 });
-  }
-
-  // Basic email validation
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(email)) {
-    return new Response(JSON.stringify({ error: 'Invalid email address' }), { status: 400 });
-  }
-
-  const { Resend } = await import('resend');
-  const resend = new Resend(import.meta.env.RESEND_API_KEY);
-
-  const { error } = await resend.emails.send({
-    from: 'Website Contact Form <noreply@YOUR_DOMAIN.com>',
-    to: ['BUSINESS_EMAIL'],  // Replace from siteConfig
-    subject: `New enquiry from ${name}${service ? ` - ${service}` : ''}`,
-    html: `
-      <h2>New Contact Form Submission</h2>
-      <p><strong>Name:</strong> ${name}</p>
-      <p><strong>Email:</strong> ${email}</p>
-      <p><strong>Phone:</strong> ${phone || 'Not provided'}</p>
-      <p><strong>Service:</strong> ${service || 'Not specified'}</p>
-      <p><strong>Message:</strong></p>
-      <p>${message.replace(/\n/g, '<br>')}</p>
-    `,
-  });
-
-  if (error) {
-    console.error('Email send error:', error);
-    return new Response(JSON.stringify({ error: 'Failed to send message' }), { status: 500 });
-  }
-
-  return new Response(JSON.stringify({ success: true }), { status: 200 });
-};
+if (Astro.request.method === "POST") {
+  try {
+    const data = await Astro.request.formData();
+    // honeypot check
+    if (data.get("_honey")) return Astro.redirect("/contact");
+    // handle submission (emdash in-page pattern)
+    // wrap in try/catch — this route also does cache hint
+  } catch (e) { /* ... */ }
+}
+try { Astro.cache.set(cacheHint); } catch {}
+---
 ```
 
+Keep Nico's `ContactForm.astro` visual/interaction design (floating labels, animated success, error shake) but point its `<form method="POST">` at the same page, reading `formStatus` server-side. The contact details sidebar, Google Maps embed placeholder, and service area statement are unchanged.
 ---
 
 ## Animation System (GSAP)
