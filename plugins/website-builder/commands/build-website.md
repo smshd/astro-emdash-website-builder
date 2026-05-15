@@ -218,6 +218,25 @@ Re-run the auditor until all checks PASS.
 
 ---
 
+## STEP 6.5: Robots/Sitemap Decision — Gated astro-robots-txt Removal (Spec §4-B / stage0 blocker)
+
+This is the ONLY commodity SEO drop and it is HARD-GATED on Plan 4's decision artifact. Do exactly this:
+
+1. Read `plugins/website-builder/references/robots-sitemap-decision.md`.
+2. **GATE:** if that file does NOT exist, OR its `## Status` is not `RESOLVED`:
+   - **HARD-FAIL LOUD.** Print: "ROBOTS-DROP BLOCKED: plugins/website-builder/references/robots-sitemap-decision.md is missing or not RESOLVED (Plan 4 has not resolved the sitemap-pointer choice). Leaving `astro-robots-txt` IN PLACE. emdash's native robots.txt advertises an empty /sitemap.xml; removing astro-robots-txt now would ship a robots.txt that never references Nico's real /sitemap-index.xml."
+   - Do NOT remove or disable `astro-robots-txt`. Do NOT modify emdash SEO settings. Proceed to STEP 7 with `astro-robots-txt` intact (the auditor Section 12.4 will record the gate as not-yet-resolved; this is expected and correct, not an audit failure of THIS step).
+3. **If `## Status` is `RESOLVED`** with Option (a) (custom emdash SEO-settings robots.txt → Nico's `/sitemap-index.xml`):
+   - Remove the `astro-robots-txt` integration from the relevant emdash/Astro config (it is NOT in `package.json` per STEP 3 — confirm it is also absent from any integrations array; if a prior step added it, remove it there).
+   - Apply the decided custom robots.txt body from the decision file via emdash SEO settings so the served `/robots.txt` emits `Sitemap: <origin>/sitemap-index.xml` (Nico's real page-graph sitemap), NOT emdash's empty `/sitemap.xml`.
+   - Verify on the built/preview deploy that `GET /robots.txt` contains exactly the `Sitemap: .../sitemap-index.xml` line and does not advertise `/sitemap.xml`.
+4. **If `## Status` is `RESOLVED`** with Option (b) (dual pointers explicitly accepted): apply the documented dual-`Sitemap:` robots.txt and leave both. Record that Option (b) was the documented choice.
+5. Hand the resolved/blocked state to STEP 6's auditor on its final pass (Section 12.3/12.4 cross-checks this step's outcome).
+
+NEVER remove `astro-robots-txt` on assumption. The decision file is the single authority. Absent or unresolved = leave it in place and fail loud.
+
+---
+
 ## STEP 7: Image Generation (Stage 5)
 
 After the auditor gives a full PASS, generate all required imagery with the
