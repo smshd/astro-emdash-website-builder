@@ -106,3 +106,43 @@ existing one). There is no upgrade-in-place; upgrades come via
   `og:image`); KEEP `@astrojs/sitemap`; do NOT add `astro-robots-txt`.
   Homepage `WebSiteSchema` double-emission with emdash's site-wide `WebSite`
   is a Plan 4/6 reconciliation item — flag, do not fix here.
+
+## 8. Media assets — `$media` local-path → R2 ingestion (Plan 5↔3 contract)
+
+emdash content image fields use the `$media` form:
+
+    "hero_image": { "$media": { "url": "<path-or-url>", "alt": "...", "filename": "name.webp" } }
+
+On first-request seed-apply, emdash resolves `$media.url`, ingests the asset
+into the R2 `MEDIA` bucket (deduped by content hash — stage0-findings Open
+Item C), and stores a TEXT reference `{ id, src?, alt?, ... }` on the entry
+row. `$media.url` may be a remote URL OR a build-local path resolvable from
+the project root at seed time.
+
+**Canonical asset directory (LOCKED): `seed/assets/`.** All generated/local
+images live at `seed/assets/<filename>`. `$media.url` for a local asset is
+the repo-relative POSIX path `seed/assets/<filename>` (forward slashes, no
+leading `./`, no `file:` scheme). The `filename` field is the bare
+`<filename>` (no directory).
+
+**Plan 4 → Plan 5 → emdash flow (do not deviate):**
+1. Plan 4 (seo-writer) writes entries with
+   `"$media": { "url": "PLACEHOLDER_REPLACED_BY_GPT_IMAGE_STAGE5",
+   "alt": "<keyword-rich alt>", "filename": "<slug>-hero.webp" }`.
+2. Plan 5 (gpt-image) writes the WebP to `seed/assets/<slug>-hero.webp`
+   and replaces the token so `url` becomes `seed/assets/<slug>-hero.webp`
+   (`filename` already matches the bare name).
+3. emdash seed-apply reads `seed/assets/<slug>-hero.webp` from the project
+   root, ingests it into R2, and the entry renders via `emdash/ui`
+   `<Image image={entry.data.hero_image} />`.
+
+**Gating rule (build must not ship the token):** before `astro build` /
+`wrangler deploy`, assert no `PLACEHOLDER_REPLACED_BY_GPT_IMAGE_STAGE5`
+remains in `seed/seed.json` and every `$media.url` that is a local path
+points at an existing file under `seed/assets/`. A residual token means
+Stage 5 did not run — STOP, do not deploy with a broken seed (emdash seed
+validation would 500 the first request anyway; fail early with a clear
+message instead).
+
+`seed/assets/` is NOT gitignored — generated client imagery is part of the
+deliverable repo. (`.dev.vars`/`data.db`/`dist/` remain gitignored per §3.)

@@ -1172,6 +1172,40 @@ Create this file to describe the business for AI crawlers:
 
 ---
 
+## Media / image assets
+
+**Canonical asset directory: `seed/assets/` (LOCKED — do not relocate or gitignore).**
+
+During scaffold you MUST:
+1. Create `seed/assets/` (empty directory with a `.gitkeep` if needed).
+2. Confirm `.gitignore` does NOT contain `seed/assets/` or `seed/` as an excluded path. `seed/assets/` is part of the deliverable repo — generated client imagery ships with the project. (`.dev.vars`, `data.db`, and `dist/` remain gitignored per `references/emdash-scaffold.md` §3.)
+3. Never delete or relocate `seed/assets/`.
+
+**CMS content images use `$media` (`{ url, alt, filename }`).**
+- A local asset's `url` is the repo-relative POSIX path `seed/assets/<filename>` (forward slashes, no leading `./`, no `file:` scheme).
+- The `filename` field is the bare `<filename>` (no directory prefix).
+- emdash ingests `$media` assets into the R2 `MEDIA` bucket on seed-apply.
+
+**This agent does NOT generate images and does NOT write content entries.**
+- Plan 5 (gpt-image) generates images and writes them to `seed/assets/<slug>-hero.webp`.
+- Plan 4 (seo-writer) writes `seed/seed.json` entries with
+  `"$media": { "url": "PLACEHOLDER_REPLACED_BY_GPT_IMAGE_STAGE5", "alt": "...", "filename": "<slug>-hero.webp" }`.
+- This agent's sole media responsibilities are: (a) create `seed/assets/`, (b) keep it un-gitignored, (c) own the pre-build token gate below.
+
+**Pre-build media gate (wire into smoke-test / build steps; Plan 6 auditor uses this exact check):**
+
+```powershell
+# Must return zero matches before astro build / wrangler deploy
+Select-String -Path "<client>\seed\seed.json" -Pattern "PLACEHOLDER_REPLACED_BY_GPT_IMAGE_STAGE5"
+```
+
+A match means Stage 5 did not run. STOP — do not deploy with a broken seed. Also assert every local `$media.url` (any value that does NOT start with `http`) points at an existing file under `seed/assets/`. Fail early with a clear message rather than letting emdash seed-validation 500 on first request.
+
+**Render path for emdash media objects:** use `<Image image={entry.data.hero_image} />` from `emdash/ui`.
+Use `astro:assets` `<Image>` only for static `public/` assets (logos, icons, etc.) — not for emdash CMS content images.
+
+---
+
 ## Image References
 
 All images are placeholders until generated in Step 7. Use this pattern for placeholders with loading skeletons:
