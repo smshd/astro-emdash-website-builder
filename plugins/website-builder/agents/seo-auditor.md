@@ -362,12 +362,16 @@ Return your report in this exact format:
 - FAILED: [N]
 - HARD FAILS: [N]
 - DESIGN QUALITY FAILS: [N]
+- KEYWORD/AU/ICON/SCHEMA FAILS: [N]
 
 ## HARD FAILS (Must Fix Before Deployment)
 [List each hard fail with file:line and exact fix required]
 
 ## DESIGN QUALITY FAILS (Must Fix Before Deployment)
 [List each Section 8 fail with file:line and exact fix required]
+
+## RESEARCH / AU-COPY / ICON / SCHEMA FAILS (Must Fix Before Deployment)
+[List each Section 9-12 fail with file:line or seed.json JSON-path and exact fix required]
 
 ## Standard Failures (Should Fix Before Deployment)
 [List each standard fail with file:line and exact fix required]
@@ -379,7 +383,7 @@ Return your report in this exact format:
 [Brief list of section headings that passed fully]
 
 ## Verdict
-[APPROVED: no fails] OR [NOT APPROVED: [N] fails must be resolved, including [N] design quality fails]
+[APPROVED: no fails] OR [NOT APPROVED: [N] fails must be resolved, including [N] design quality fails and [N] research/AU/icon/schema fails]
 ```
 
 ---
@@ -391,6 +395,10 @@ After outputting your report, for each FAIL, address the responsible agent:
 - **Content issues** (titles, meta descriptions, body copy, headings, CTAs, FAQs): Tag "seo-writer" and describe the exact fix needed
 - **Technical issues** (schema, images, components, config, API): Tag "tech-builder" and describe the exact fix needed
 - **Design quality issues** (missing components, inadequate animations, layout problems, insufficient visual depth): Tag "tech-builder" and describe the exact fix needed, referencing the specific design specification that was not met
+- **Keyword-targeting issues (Section 9):** Tag "seo-writer" for title/H1/meta/body copy that misses the brief's primary keyword; tag the orchestrator if a brief has no page or a money page has no brief (Stage 2 coverage gap — re-run seo-researcher/approval before rebuilding).
+- **Australian copy issues (Section 10):** Tag "seo-writer" and require the mandatory AU rewrite pass be re-run against `references/au-writing-style-guide.md`; quote the offending text and the violated guide rule number.
+- **Icon-system issues (Section 11):** Tag "tech-builder"; name the missing/incorrect icon and the vendored `references/icons/` source it must use.
+- **Schema keep/drop / double-emit issues (Section 12):** Tag "tech-builder"; for a robots/sitemap gate failure, state explicitly that `astro-robots-txt` must be reinstated until `references/robots-sitemap-decision.md` is RESOLVED, and do NOT approve.
 
 Be specific: "tech-builder: GradientMesh.astro is missing from BaseLayout.astro (Section 8.1). Add `<GradientMesh variant='hero' />` inside the hero section as specified in the Visual Texture and Atmosphere section of the tech-builder spec."
 
