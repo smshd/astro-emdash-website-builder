@@ -607,6 +607,11 @@ export const siteConfig = {
 
 ## Component Rules
 
+> **Porting preamble (emdash target — read before generating any component):**
+> - All components go in `src/components/` (schema components in `src/components/schemas/`).
+> - `BaseLayout.astro` does NOT replace emdash's `src/layouts/Base.astro`; it WRAPS it (or is a sibling layout that imports `theme.css` then `tailwind.css` and includes `EmDashHead`-equivalent SEO). Nico's `BaseHead.astro` schema-injection + OG/Twitter enrichment is KEPT because emdash's native head omits `og:image`/`twitter:image` (stage0-findings). State: keep emdash's `<EmDashHead>` for canonical/base tags AND render Nico's schema components + social-image meta on top (Plan 6 reconciles any homepage `WebSite` double-emission — flag, don't fix).
+> - Tailwind classes work because of `@tailwindcss/vite` (Task 5); brand colors come from the `@theme` tokens; colored-shadow utilities use `--color-primary-rgb`.
+
 ### SectionDivider.astro
 
 Reusable SVG section divider. Props:
@@ -970,9 +975,41 @@ try { Astro.cache.set(cacheHint); } catch {}
 ```
 
 Keep Nico's `ContactForm.astro` visual/interaction design (floating labels, animated success, error shake) but point its `<form method="POST">` at the same page, reading `formStatus` server-side. The contact details sidebar, Google Maps embed placeholder, and service area statement are unchanged.
+### Icon System
+
+The plugin ships 18 inline SVGs in `plugins/website-builder/references/icons/`. See `references/icons/README.md` for the full catalogue and conventions. During scaffold, copy the SVGs you need from the plugin into the client project's `src/icons/`.
+
+**Inline them in Astro components** using either:
+```astro
+---
+import arrowRight from '../icons/arrow-right.svg?raw';
+---
+<Fragment set:html={arrowRight} />
+```
+or a thin `Icon.astro` wrapper that accepts a `name` prop and does the raw import dynamically.
+
+**Icon conventions (from `references/icons/README.md`):**
+- All icons: `viewBox="0 0 24 24"`, `fill="none"`, `stroke="currentColor"`, no `width`/`height` attributes. Consumer sizes via CSS (e.g., `class="w-5 h-5"`).
+- Decorative icons: `aria-hidden="true"`. Informative icons: `aria-label="..."`.
+- Colour is always `currentColor` — never hardcode a hex. Use Tailwind text-color utilities on the parent.
+- **No `astro-iconset`, no Phosphor, no Heroicons packages.** The plugin's `references/icons/` is the canonical source.
+
+**Wire icons into these slots:**
+| Slot | Icon(s) |
+|---|---|
+| WhyUs USP gradient containers | category icon from `references/icons/` |
+| Process step markers | numbered or arrow variant |
+| Footer / contact details | `phone`, `mail`, `map-pin` |
+| Social row (circular hover-fill containers) | platform icons |
+| ServiceCard / LocationCard arrow indicator | `arrow-right` |
+
+**React island rule:** use a React island ONLY for a single sparingly-used motion-accent icon (itshover). All other icons are static inline SVG. The React island must degrade to a static SVG when JS is unavailable.
+
 ---
 
 ## Animation System (GSAP)
+
+> **emdash SSR note:** emdash pages are server-rendered on each request (not prerendered/static). Query selectors must run after hydration. The existing `document.addEventListener('astro:page-load', ...)` wrap already satisfies this — keep it on every animation block. Do NOT remove the `astro:page-load` wrapper or assume the DOM is available at module evaluation time.
 
 Add GSAP animations to the following components. Always:
 1. Import GSAP only in `<script>` tags (client-side only)
@@ -1208,29 +1245,28 @@ Use `astro:assets` `<Image>` only for static `public/` assets (logos, icons, etc
 
 ## Image References
 
-All images are placeholders until generated in Step 7. Use this pattern for placeholders with loading skeletons:
+**Two image paths exist in an emdash project — use the right one for each case:**
 
+1. **emdash CMS content images** (hero images, gallery images, any image stored in the emdash content DB):
+   Use `<Image image={entry.data.hero_image} />` from `emdash/ui`. The value is an emdash image object (`$media`). Do NOT use `astro:assets` `<Image>` for these.
+
+2. **Static `public/` assets** (logos, icons, decorative SVGs, favicons):
+   Use `astro:assets` `<Image>` as normal.
+
+**CMS image scaffold pattern** (placeholder until Stage 4/5 fills content):
 ```astro
 ---
-import { Image } from 'astro:assets';
+import { Image } from 'emdash/ui';
+// entry.data.hero_image is a $media object: { url, alt, filename }
 ---
 <div class="relative overflow-hidden rounded-xl">
-  <div class="absolute inset-0 animate-pulse bg-neutral-200 rounded-xl" id="skeleton-hero"></div>
-  <Image
-    src="/images/hero.webp"
-    alt="[Keyword-rich alt text from seo-writer]"
-    width={1920}
-    height={1080}
-    format="webp"
-    loading="eager"
-    fetchpriority="high"
-    class="relative z-10"
-    onload="this.previousElementSibling.style.display='none'"
-  />
+  <Image image={entry.data.hero_image} class="w-full h-full object-cover" />
 </div>
 ```
 
-For non-hero images use `loading="lazy"`.
+**Never use `src="/images/..."` paths for CMS content.** Those paths do not exist in an emdash project — all content imagery is served through the emdash R2 `MEDIA` bucket.
+
+For non-hero images use `loading="lazy"` where the `emdash/ui` `<Image>` component exposes that prop.
 
 ---
 
@@ -1260,3 +1296,12 @@ After generating all files, run a self-check:
 10. Is the GrainOverlay included in BaseLayout?
 11. Does the header have the scroll progress bar and glass-morphism transition?
 12. Do all section H2s have the scroll-triggered word reveal animation class?
+13. Are there zero references to `content.config.ts`, `getStaticPaths`, or `astro:content` file collections in generated code? emdash uses `getEmDashEntry`/`getEmDashCollection` exclusively.
+14. Do all pages use `getEmDashEntry`/`getEmDashCollection` for data fetching?
+15. Do both `research/sitemap.json` (fields: `path`, `page_type`, `cluster_id`) and `research/internal-link-map.json` (fields: `links[]` with `from`, `to`, `relation`) exist? The build STOPS if either is absent or empty.
+16. Is `.dev.vars` gitignored before the first commit? (`references/emdash-scaffold.md` §3 gate.)
+17. Is the `worker_loaders` block in `wrangler.jsonc` commented out?
+18. Are `src/live.config.ts`, `emdash-env.d.ts`, and `worker-configuration.d.ts` untouched? (R2 do-not-edit guardrails — pin emdash version per client, never modify these files.)
+19. Are all icons inline SVG with `currentColor`? No `astro-iconset` or Phosphor packages present.
+20. Is `@astrojs/sitemap` kept and `astro-robots-txt` NOT added? (Plan 6 gates robots reconciliation.)
+21. Does `seed/assets/` exist, is it NOT gitignored, and does the pre-build gate (`Select-String ... -Pattern "PLACEHOLDER_REPLACED_BY_GPT_IMAGE_STAGE5"`) return zero matches before deploy?
