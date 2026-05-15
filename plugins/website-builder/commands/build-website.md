@@ -24,6 +24,20 @@ Work through the steps in order. Do NOT skip steps. The numbered `STEP` headings
 
 ---
 
+## STEP 0: Scaffold the emdash Project + Secret-Hygiene Gate (Spec Stage 0)
+
+Do this FIRST, in the empty per-client folder where `/build-website` was invoked. Follow `plugins/website-builder/references/emdash-scaffold.md` exactly (authored by the tech-builder/scaffold plan — do not redefine the commands here; that reference is the single source of truth). In summary it:
+
+1. Scaffolds via `npm create emdash@latest -- --template marketing --platform cloudflare`.
+2. Comments out the `worker_loaders` block in `wrangler.jsonc` (R1 — sandboxed plugins off, free tier).
+3. **`.dev.vars` secret-hygiene GATE (mandatory, BEFORE the first commit):** ensure `.gitignore` contains `.dev.vars` and `.dev.vars.*` and assert `git status --porcelain` does NOT show `.dev.vars` staged. If `.dev.vars` is staged, abort and `git rm --cached .dev.vars` before proceeding. The scaffold MUST NOT be committed until this passes.
+4. Creates the per-client `smshd` private repo and makes the first commit only after the gate passes.
+5. Records the Windows-safe dev/seed workflow (`scripts/emdash-dev.mjs` from the fork) for later stages — emdash's `npx emdash dev` dies with `spawn npx ENOENT` on Windows and the template's `npm run dev` never seeds.
+
+Do not proceed to STEP 1 until the scaffold exists, `worker_loaders` is commented out, the `.dev.vars` gate has passed, and the first commit is made.
+
+---
+
 ## STEP 1: Onboarding Questionnaire
 
 Ask the following questions using `AskUserQuestion`. Ask them one at a time and wait for each answer before continuing.
@@ -117,31 +131,9 @@ If the user said "choose for me", select a professional palette appropriate to t
 
 ---
 
-## STEP 3: Scaffold the Astro Project
+## STEP 3: (Scaffold moved to STEP 0)
 
-Run the following commands in sequence using the Bash tool. Run them from the current working directory (the project folder where `/build-website` was invoked).
-
-```bash
-npm create astro@latest . -- --template minimal --typescript strict --no-install --git false
-```
-
-Then:
-```bash
-npm install
-```
-
-Then:
-```bash
-npx astro add tailwind cloudflare sitemap --yes
-```
-
-Then:
-```bash
-npm install gsap @astrojs/image resend
-npm install -D astro-robots-txt
-```
-
-After each command, check for errors before proceeding. If a command fails, diagnose and fix the issue before continuing.
+The project is already scaffolded as an emdash project in STEP 0 — there is NO `npm create astro` / Cloudflare Pages step. emdash's infra (`output:'server'`, `@astrojs/cloudflare`, D1 `DB` + R2 `MEDIA`, `main:"./src/worker.ts"`) replaces Nico's discarded `output:'hybrid'`/Pages config. The design system (Tailwind via `@tailwindcss/vite`, GSAP, Nico's components) and the KEPT `@astrojs/sitemap` are added by the tech-builder agent into the emdash scaffold in STEP 4. `astro-robots-txt` is NOT installed here — its keep/drop is decided by STEP 6.5 (gated on `references/robots-sitemap-decision.md`).
 
 ---
 
