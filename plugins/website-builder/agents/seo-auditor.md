@@ -254,6 +254,32 @@ Every site must meet the visual standard of an award-winning studio. These check
 
 ---
 
+## Checklist Section 9: Keyword Targeting vs Stage 2 Research
+
+Source of truth: `research/keyword-briefs.json` (Plan 2 `seo-researcher` output, in the per-client project root). For EACH brief in `briefs[]`, resolve the page it targets via `brief.path` (cross-check against `research/sitemap.json` for `page_type`). Read that page's rendered title, H1, and meta description (from the emdash `seed.json` entry for that path, or the server-rendered page if a preview is running).
+
+### 9.1 Primary keyword presence
+- [ ] **HARD FAIL:** For every brief, the page's `<title>` contains the brief's `primary_keyword` (case-insensitive substring; minor stop-word/word-order variation allowed, the head noun must be present). Report the brief `path`, the expected `primary_keyword`, and the actual title for any failure.
+- [ ] **HARD FAIL:** For every brief, the page's single H1 contains the brief's `primary_keyword` (same matching rule).
+- [ ] For every brief, the page's meta description contains the `primary_keyword` or a clear lexical variant of it near the beginning (first ~120 chars).
+
+### 9.2 Secondary cluster coverage
+- [ ] Each page's visible body copy references at minimum one term from its brief's `secondary_cluster[]` (keyword field). Report the brief `path` and the missing cluster if none appear.
+- [ ] No page's title/H1 targets a `primary_keyword` that belongs to a DIFFERENT brief's `path` (no two pages cannibalising the same primary keyword — cross-check all briefs; flag duplicates).
+
+### 9.3 Intent matches page type
+- [ ] **HARD FAIL:** Each brief's `funnel` matches the page type it is mapped to in `research/sitemap.json`:
+  - `funnel == "BOFU"` → `page_type` is a money page (service, location, service×location, or homepage). FAIL if a BOFU brief maps to a blog/guide page.
+  - `funnel == "TOFU"` → `page_type` is a blog/guide/informational page. FAIL if a TOFU brief maps to a service/location money page (doorway/intent-mismatch).
+  - `funnel == "MOFU"` → comparison/consideration page (a service page section, a comparison page, or a guide). FAIL only if mapped to a pure transactional checkout-style page with no comparison content.
+- [ ] For every brief, the page's `target_serp_features[]` are not contradicted (e.g. a brief listing a FAQ/PAA SERP feature should have a page with an FAQ section — soft FAIL if absent, cross-references Section 3.1 `FAQSchema`).
+
+### 9.4 Brief coverage completeness
+- [ ] **HARD FAIL:** Every `brief.path` in `keyword-briefs.json` has a corresponding built page (in `seed.json` or rendered). A brief with no page = an approved target that was never built.
+- [ ] **HARD FAIL:** Every built service/location/money page has a corresponding brief. A money page with no brief = unresearched content that bypassed the Stage 2 approval gate.
+
+---
+
 ## Output Format
 
 Return your report in this exact format:
