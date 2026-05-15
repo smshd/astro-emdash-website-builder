@@ -121,13 +121,9 @@ Do not proceed past this gate until the user explicitly approves. If the user re
 
 ---
 
-## STEP 2: Color Palette Extraction (Conditional)
+## STEP 2: Colour Palette Extraction (Conditional — Claude vision, no image model)
 
-If the user provided a screenshot path in Q6, **read the screenshot directly with the Read tool** (you are multimodal — no image model is used for analysis; gpt-image-2 is generation-only). Inspect the image and extract the 5 dominant brand colours as hex codes, labelled: `primary`, `secondary`, `accent`, `neutral-light`, `neutral-dark`. Prefer colours that pass WCAG AA for body text/background pairings; if the screenshot's palette is too low-contrast, note it and adjust the neutral pair.
-
-Store the extracted hex values. These feed the emdash design tokens / Tailwind config (per the tech-builder agent — `tailwind.css`/`theme.css`, not the discarded Astro `tailwind.config.mjs`).
-
-If the user said "choose for me", select a professional palette appropriate to their industry based on their services and tone preference.
+If the user provided a screenshot path in Q6, **you (the orchestrator, multimodal) read the screenshot directly** with the Read tool and extract the 5-colour brand palette as hex: primary, secondary, accent, neutral-light, neutral-dark. Do NOT call an image model for analysis — gpt-image-2 is generation-only and nano-banana-pro is no longer the analysis path. Store the hex values for the tech-builder (Tailwind tokens via `@tailwindcss/vite`). If the user said "choose for me", select an industry/tone-appropriate professional palette.
 
 ---
 
@@ -137,52 +133,23 @@ The project is already scaffolded as an emdash project in STEP 0 — there is NO
 
 ---
 
-## STEP 4: Spawn Specialist Agents in Parallel
+## STEP 4: Spawn Specialist Agents (Stage 3 content + Stage 4 build)
 
-In a single message, spawn both agents simultaneously using the Task tool.
+STEP 1.5's research artifacts in `research/` are APPROVED (the gate passed) before this step runs. Spawn both agents with the Task tool.
 
-**IMPORTANT:** Both agents must produce output that meets award-winning design studio quality. The sites we build are not templates. They have visual depth, distinctive motion, and premium polish.
+### tech-builder agent (Stage 4 — build into the emdash scaffold)
+Pass: full onboarding data, the Step 2 palette, all services/locations, social, hours, testimonials, tone, design personality (Q6b), AND `research/sitemap.json` + `research/internal-link-map.json` (the data-derived page set and link topology — build exactly these pages, not "one page per onboarding service"). Instruct it to port Nico's design system into the **emdash scaffold** (server-rendered pages via `getEmDashCollection`/`getEmDashEntry`, Tailwind via `@tailwindcss/vite`, GSAP, the inline-SVG icon system from `references/icons/`), keep ALL Nico schema components + SEO head enrichment, keep `@astrojs/sitemap`, and obey R2 (never edit `src/live.config.ts` / generated `*-env.d.ts`). No `getStaticPaths`, no `content.config.ts`.
 
-### tech-builder agent
+### seo-writer agent (Stage 3 — content against approved briefs, then mandatory AU pass)
+Pass the same onboarding data PLUS `research/keyword-briefs.json` (the per-page primary keyword, secondary cluster, intent, SERP features, H1/title angle, top-3 competitor notes — this is the writer's input, not the raw onboarding service list) and `research/tofu-backlog.json` (blog/guide backlog). The writer applies Nico's rules against the briefs, then **a mandatory deterministic `rewrite` pass applies `references/au-writing-style-guide.md` + the `avo-writing-voice` skill** (precedence: AU guide > avo-writing-voice > Nico's en-US voice rules). Output is emdash collection entries (Portable Text) destined for `seed.json`; image fields use the `$media` form with `url` literal `PLACEHOLDER_REPLACED_BY_GPT_IMAGE_STAGE5` (Stage 5 fills it).
 
-Provide the full business data collected in Step 1, the color palette from Step 2, and the list of all services and locations. Instruct it to build the entire Astro project file structure as defined in the tech-builder agent specification.
-
-Pass this context:
-- Business name, tagline, contact info, address/service area
-- All services (names, descriptions, differentiators, slugs)
-- All locations (names, slugs, whether primary or secondary)
-- Color palette (hex codes for primary, secondary, accent, neutral)
-- Social media handles
-- Business hours
-- Any testimonials
-- Tone preference
-- **Design personality preference from Q6b** (bold/warm/sleek/energetic). This informs layout choices, animation intensity, shape language, and color treatment. Specifically:
-  - **Bold and modern:** sharp clip-paths, high-contrast gradients, strong diagonal section dividers, heavier shadows, aggressive hover states
-  - **Warm and approachable:** wave/curve section dividers, softer rounded corners (rounded-3xl to rounded-4xl), gentler animations (longer durations, softer easing), warm-toned gradient meshes
-  - **Sleek and minimal:** more whitespace (py-32+), fewer gradient meshes, subtle animations (shorter distances, quicker durations), thin accent lines instead of bold bars
-  - **Energetic and dynamic:** zigzag dividers, playful rotation animations, vibrant gradient meshes, bento grid with varied card sizes, bouncy easing (back.out)
-
-### seo-writer agent
-
-Provide the same full business data. Instruct it to write all page content: titles, meta descriptions, H1s, body copy, FAQs, CTAs, stat items, and breadcrumb labels for every page (homepage, about, contact, services index, each service page, locations index, each location page).
-
-Pass the same context as tech-builder, plus the design personality preference so the writer knows to keep hero H1s short (4-8 words) for large-scale display and to structure stats as number + label pairs.
-
-Wait for both agents to complete before proceeding to Step 5.
+Wait for BOTH agents before STEP 5.
 
 ---
 
-## STEP 5: Integrate Content into Files
+## STEP 5: Integrate Content into the emdash seed (Stage 4)
 
-After both agents return their outputs, use the tech-builder agent again (or directly via Write/Edit tools) to merge the seo-writer's content into the files the tech-builder created. Specifically:
-
-- Insert all meta titles and descriptions into frontmatter of content collection .md files
-- Insert all H1s and body copy into the correct .astro page components
-- Insert all FAQs into the FAQ component data
-- Insert testimonials into the Testimonials component data
-- Insert stat items (number + label pairs) into the stats bar
-- Insert CTA content for each placement (above-fold, mid-page, bottom) with proper heading/subtext/button structure
-- Verify all breadcrumb labels are set
+Merge the seo-writer's AU-passed Portable Text content into the emdash `seed/seed.json` collection entries the tech-builder created: services, locations, pages, plus the blog/guide collection for the TOFU backlog. Set every page's meta title, meta description, H1, body, FAQs, CTAs, stats, breadcrumb labels, and internal links (per `research/internal-link-map.json`). Leave every image field's `$media.url` as the literal `PLACEHOLDER_REPLACED_BY_GPT_IMAGE_STAGE5` token (Stage 5 replaces it). Seed applies automatically on first request to an empty D1 DB; use the Windows-safe dev/seed workflow (`scripts/emdash-dev.mjs`) to verify locally — do NOT rely on `npx emdash dev` spawning Astro on Windows.
 
 ---
 
