@@ -247,33 +247,75 @@ Re-run the auditor until all checks PASS.
 
 ---
 
-## STEP 7: Image Generation
+## STEP 7: Image Generation (Stage 5)
 
-After the auditor gives a full PASS, generate all required images using the **Skill tool** with `nano-banana-pro`.
+After the auditor gives a full PASS, generate all required imagery with the
+**`gpt-image`** skill (engine: `gpt-image-2`, snapshot `gpt-image-2-2026-04-21`,
+`--format webp`). `nano-banana-pro` is the **documented fallback engine** —
+only use it (same prompts) if `gpt-image` fails to produce an asset after a
+retry; note any fallback in the handoff report.
 
-Generate images in this order. For each, save the output to the specified path.
+**Contract with Stage 3 (seo-writer / Plan 4).** `seed/seed.json` already
+contains every page/collection entry. Each image field is an emdash `$media`
+object written by seo-writer in this exact shape:
 
-**1. Homepage hero (2K resolution):**
-- Prompt: `"Professional [industry] service hero image, modern and clean, photorealistic, [primaryColor] color tones, no text overlays, wide format, cinematic lighting"`
-- Output: `public/images/hero.webp`
+```json
+"hero_image": { "$media": { "url": "PLACEHOLDER_REPLACED_BY_GPT_IMAGE_STAGE5", "alt": "<descriptive alt>", "filename": "<slug>-hero.webp" } }
+```
 
-**2. Each service page hero (1K resolution, one per service):**
-- Prompt: `"Professional photo of [service name] work being performed, clean modern setting, photorealistic, high quality"`
-- Output: `public/images/services/[service-slug]-hero.webp`
+Your job for every such object is to: generate the image, save it into the
+per-client emdash asset directory `seed/assets/` (the tech-builder /
+emdash media convention from Plan 3 — do not invent a different location),
+then **replace ONLY the literal string `PLACEHOLDER_REPLACED_BY_GPT_IMAGE_STAGE5`
+in that object's `url` with the saved asset's path** (`seed/assets/<filename>`,
+forward slashes). **Preserve `alt` and `filename` byte-for-byte — do not
+rewrite them.** Do not change image fields whose `url` is not the placeholder
+token. emdash ingests the local-path `$media` into the R2 `MEDIA` binding at
+seed-apply time (emdash media handling is owned by emdash/Plan 3 — do not add
+raw-URL image fields; emdash rejects them).
 
-**3. Each location page hero (1K resolution, one per location):**
-- Prompt: `"Aerial or street-level view of [city], [state/country], clean bright daylight, professional photography style"`
-- Output: `public/images/locations/[location-slug].webp`
+### Procedure
 
-**4. OG/social share image (1K resolution):**
-- Prompt: `"[Business name] - [Primary service] in [primary city] - professional brand image, clean background, no text"`
-- Output: `public/images/og-default.webp`
+1. **Locate every placeholder.** Read `seed/seed.json`. Find all `$media`
+   objects with `url == "PLACEHOLDER_REPLACED_BY_GPT_IMAGE_STAGE5"`. Build a
+   work list of `{ json-path, alt, filename }`. Group by image purpose using
+   the entry's collection + slug:
+   - homepage entry `hero_image` → homepage hero
+   - `content.services[*].hero_image` → per-service hero
+   - `content.locations[*].hero_image` → per-location hero
+   - the OG/share image field → OG image
+   - the about/team image field → team image
+2. **Generate each image** with the Skill tool, `--output` set to the absolute
+   path `<project>/seed/assets/<filename>` (the `gpt-image` skill writes an
+   absolute `--output` exactly as given). Use the entry's `alt` text to inform
+   a strong prompt. Suggested prompts (substitute business/service/location/
+   colour from Step 1 + the Step 2 palette):
+   - **Homepage hero** — `--aspect 16:9`: `"Professional [industry] service hero image, modern and clean, photorealistic, [primaryColor] tones, no text overlays, wide cinematic lighting"`
+   - **Service hero** (one per service) — `--aspect 16:9`: `"Professional photo of [service name] work being performed, clean modern setting, photorealistic, no text"`
+   - **Location hero** (one per location) — `--aspect 16:9`: `"Street-level view of [city], [state], clean bright daylight, professional photography, no text"`
+   - **OG/share image** — `--aspect 1:1`: `"[Business name] — [primary service] in [primary city], clean brand image, no text"`
+   - **Team image** — `--aspect 16:9`: `"Friendly professional team of [industry] workers, modern setting, approachable, photorealistic, no text"`
+   All calls use `--format webp`. Example:
+   ```
+   Skill: gpt-image
+   Command: python scripts/run.py generate.py --prompt "Professional plumbing service hero, modern and clean, photorealistic, teal tones, no text, cinematic lighting" --aspect 16:9 --format webp --output "<project>/seed/assets/home-hero.webp"
+   ```
+3. **Replace the token.** For each generated asset, edit `seed/seed.json`:
+   set that `$media` object's `url` to `"seed/assets/<filename>"`. Change
+   nothing else in the object. After all replacements, `Grep`
+   `PLACEHOLDER_REPLACED_BY_GPT_IMAGE_STAGE5` in `seed/seed.json` → **0
+   matches** (hard gate; if any remain, an image was missed — generate it).
+4. **Validate JSON.** `python -c "import json;json.load(open('seed/seed.json'))"`
+   must succeed (emdash rejects malformed seed and raw-URL image fields).
+5. **Asset directory note.** If `seed/assets/` does not exist, create it.
+   The exact directory is Plan 3's emdash-media convention; if Plan 3's
+   tech-builder placed assets elsewhere, follow that and use the matching
+   relative path in the `url` — the contract is "local path emdash can
+   ingest", not a hardcoded folder.
 
-**5. About/team image (1K resolution):**
-- Prompt: `"Friendly professional team of [industry] workers, modern [office/field] setting, smiling, diverse, approachable"`
-- Output: `public/images/team.webp`
-
-After each image is saved, update the relevant `.astro` component to reference the correct path using Astro's `<Image>` component (not `<img>`). The seo-writer should provide alt text for each image (keyword-relevant, descriptive, specific).
+The `alt` text already lives in each `$media` object (written by seo-writer
+per the AU writing standard) — it is preserved automatically because you only
+ever overwrite `url`.
 
 ---
 
