@@ -330,37 +330,92 @@ If any two pages share more than 60% similar copy, rewrite until differentiation
 
 ---
 
-## Deliverable Format
+## Output: emdash seed.json collection entries
 
-Return your content as structured data organized by page. For each page, provide:
+Your output is written into the per-client emdash project's `seed/seed.json` (created by the scaffold step, Plan 3). You APPEND/MERGE content entries; you do NOT overwrite the file. emdash is a wide-table, one-row-per-entry store: every page is exactly one entry; the page body is one `portableText` field (a JSON array of blocks). Do not produce Astro `.md` files or `content.config.ts` — those are discarded.
 
-```
-PAGE: [page name]
-META_TITLE: [exact text, character count]
-META_DESCRIPTION: [exact text, character count]
-H1: [exact text]
-HERO_SUBHEADING: [exact text]
-BODY_SECTIONS:
-  [section name]: [content]
-STAT_ITEMS:
-  - { number: "[value]", label: "[label]" }
-  - { number: "[value]", label: "[label]" }
-FAQS:
-  - Q: [question]
-    A: [answer]
-CTAS:
-  above_fold:
-    button_text: [3-5 word button text]
-  mid_page:
-    heading: [heading text]
-    subtext: [supporting sentence]
-    button_text: [button text]
-  bottom:
-    heading: [punchy heading]
-    subtext: [supporting line]
-    button_text: [button text]
-IMAGE_ALT_TEXTS:
-  [image name]: [alt text]
+### Collections
+
+Ensure the following two content collections are present in `seed.json` `collections[]` (the scaffold provides `pages`; seo-writer/tech-builder ensure `services` and `locations` exist). Write these EXACT collection definitions into `collections[]`:
+
+```json
+{
+  "slug": "services",
+  "label": "Services",
+  "labelSingular": "Service",
+  "supports": ["drafts", "revisions", "seo"],
+  "fields": [
+    { "slug": "title", "label": "Title", "type": "string", "required": true, "searchable": true },
+    { "slug": "h1", "label": "H1", "type": "string", "required": true },
+    { "slug": "hero_subheading", "label": "Hero Subheading", "type": "text" },
+    { "slug": "meta_title", "label": "Meta Title", "type": "string", "required": true },
+    { "slug": "meta_description", "label": "Meta Description", "type": "text", "required": true },
+    { "slug": "primary_keyword", "label": "Primary Keyword", "type": "string" },
+    { "slug": "content", "label": "Content", "type": "portableText", "searchable": true },
+    { "slug": "stats", "label": "Stats", "type": "json" },
+    { "slug": "faqs", "label": "FAQs", "type": "json" },
+    { "slug": "ctas", "label": "CTAs", "type": "json" },
+    { "slug": "hero_image", "label": "Hero Image", "type": "image" }
+  ]
+}
 ```
 
-This structured format allows the tech-builder agent to accurately place each piece of content into the correct component, with CTAs properly formatted for their visual treatment at each placement and stats formatted for oversized display.
+And an identical-shaped `locations` collection (`"slug": "locations"`, `"label": "Locations"`, `"labelSingular": "Location"`, same `supports`, same `fields`).
+
+If `collections[]` already contains `services`/`locations` (tech-builder may have written them), do not duplicate — verify the field set matches this contract and reconcile; do not append a second collection with the same slug.
+
+Note the slug rule from emdash (`/^[a-z][a-z0-9_]*$/`, max 63 chars) — `services`/`locations` comply.
+
+### Per-page entry shape
+
+For each brief, append exactly one entry to the appropriate `content.<collection>[]` array. Use this concrete example (a service page) as the canonical shape:
+
+```json
+{
+  "id": "service-hot-water-systems",
+  "slug": "hot-water-systems",
+  "status": "published",
+  "data": {
+    "title": "Hot Water Systems",
+    "h1": "Same-Day Hot Water Repairs in Melbourne",
+    "hero_subheading": "Cold showers are never acceptable. We install and repair every major hot water brand with same-day response and a 12-month warranty.",
+    "meta_title": "Hot Water Systems Melbourne | FastFlow",
+    "meta_description": "Hot water system repairs and installs across Melbourne. Licensed, insured, same-day service with upfront pricing. Get a free quote today.",
+    "primary_keyword": "hot water systems melbourne",
+    "content": [
+      { "_type": "block", "style": "h2", "children": [ { "_type": "span", "text": "Hot water gone cold? We fix it today." } ] },
+      { "_type": "block", "style": "normal", "children": [ { "_type": "span", "text": "When your hot water fails you want it sorted, not a sales pitch. " }, { "_type": "span", "text": "Same-day response", "marks": ["strong"] }, { "_type": "span", "text": " across Melbourne, every brand, upfront pricing." } ] },
+      { "_type": "block", "style": "h2", "children": [ { "_type": "span", "text": "What we cover" } ] },
+      { "_type": "block", "style": "normal", "children": [ { "_type": "span", "text": "Gas, electric, heat-pump and solar systems. Repairs, replacements and new installs." } ] }
+    ],
+    "stats": [ { "number": "15+", "label": "Years Experience" }, { "number": "<2hrs", "label": "Average Response" } ],
+    "faqs": [ { "question": "How fast can you replace a failed hot water system?", "answer": "Most replacements are done same day if you call before midday." } ],
+    "ctas": {
+      "above_fold": { "button_text": "Get a Free Quote" },
+      "mid_page": { "heading": "Hot water out? Let's sort it today.", "subtext": "Upfront pricing, no call-out runaround.", "button_text": "Request a Callback" },
+      "bottom": { "heading": "Don't spend another day on cold showers", "subtext": "Trusted by Melbourne households for over 15 years.", "button_text": "Book Your Repair Today" }
+    },
+    "hero_image": { "$media": { "url": "PLACEHOLDER_REPLACED_BY_GPT_IMAGE_STAGE5", "alt": "Licensed plumber repairing a hot water system in a Melbourne home", "filename": "hot-water-systems-hero.webp" } }
+  }
+}
+```
+
+**Field mapping rules:**
+
+- Nico `META_TITLE` → `data.meta_title` (still 50–60 chars; the rule is unchanged, only the destination field changes).
+- Nico `META_DESCRIPTION` → `data.meta_description` (still 140–160 chars).
+- Nico `H1` → `data.h1` (still must contain `primary_keyword`).
+- Nico `HERO_SUBHEADING` → `data.hero_subheading`.
+- Nico `BODY_SECTIONS` (problem intro, longDescription, process) → `data.content` as Portable Text blocks: section headings → `{"_type":"block","style":"h2",...}`; body paragraphs → `style:"normal"`; bold lead-in phrases → a `span` with `"marks":["strong"]` (NOT a Markdown `**`), per emdash inline-mark rules; testimonials/quotes → `style:"blockquote"`. Block styles allowed: `normal`, `h1`–`h6`, `blockquote` (H1 is the entry's `data.h1` field, so in-body headings start at `h2`).
+- Nico `STAT_ITEMS` → `data.stats` (JSON array of `{number,label}`).
+- Nico `FAQS` → `data.faqs` (JSON array of `{question,answer}`).
+- Nico `CTAS` (above_fold/mid_page/bottom) → `data.ctas` (JSON object, the three placements with their distinct copy — Nico's CTA-by-placement rule retained).
+- Nico `IMAGE_ALT_TEXTS` → the `alt` of the relevant `image` field's `$media` object; image fields are emdash objects `{ id, src?, alt?, width?, height? }` and in seed use the `$media` form (`{ "$media": { url, alt, filename } }`). seo-writer writes the `alt` and a `filename`; the actual asset URL is filled by the Stage 5 gpt-image step — write the literal token `PLACEHOLDER_REPLACED_BY_GPT_IMAGE_STAGE5` as the `url` so the image step can find and replace it.
+
+### Homepage and other page kinds
+
+Homepage / about / contact / services-index / locations-index are written into the scaffold-provided `pages` collection (`content.pages[]`), same entry shape (`id`, `slug`, `status`, `data` with `title`, `h1`, `hero_subheading`, `meta_title`, `meta_description`, `primary_keyword`, `content` Portable Text, `stats`, `faqs`, `ctas`, `hero_image`). `slug` for the homepage is `home` (matches the marketing template's existing `content.pages[0]`). Service pages → `content.services[]`; location pages → `content.locations[]`. `slug` must match the `path` from the brief (strip leading slash, e.g. brief `path:"/services/hot-water-systems"` → `services` collection entry `slug:"hot-water-systems"`); `id` is `"<collection-singular>-<slug>"`.
+
+### Merge rules (do not clobber)
+
+Read existing `seed/seed.json`. If it contains the marketing template's demo `content.pages` (the "Acme" home/pricing/contact from the scaffold), REPLACE the demo entries (they are placeholder fixtures) but PRESERVE `$schema`, `version`, `meta`, `settings`, `menus`. Append `services`/`locations` collection definitions to `collections[]` only if absent. Output must be valid JSON (the whole file must `JSON.parse`); emdash validates at apply time and rejects: image fields with raw URLs (must use `$media`), PortableText not an array or missing `_type`, type mismatches.
