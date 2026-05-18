@@ -43,7 +43,12 @@ If any input is missing, ask the orchestrator for it before making any DataForSE
 - On the capped candidate set (≤150), call `mcp__dataforseo__dataforseo_labs_google_bulk_keyword_difficulty` ONCE (batched array of all candidates; if the candidate count exceeds the endpoint's per-call max, use the minimum number of batched calls — never one call per keyword).
 - Call `mcp__dataforseo__kw_data_google_ads_search_volume` with the full candidate array and the AU `location_name` set (location-scoped search volume) — one batched call.
 - Call `mcp__dataforseo__dataforseo_labs_search_intent` with the candidate array, `language_code: "en"` — one batched call.
-- Auto-tag the funnel from intent exactly per spec §6 step 2: `transactional` or `commercial` → **BOFU**; `comparison`/`commercial-investigation` → **MOFU**; `informational` (and `navigational` unless it is the client's own brand) → **TOFU**. If `search_intent` returns no intent for a keyword, fall back: presence of buy/hire/cost/near-me/`{service} {city}` patterns → BOFU; `best/vs/compare/review` → MOFU; `how/what/why/guide/tips` → TOFU. Mark fallback-derived tags as `intent_source: "heuristic"` vs `"dataforseo"` in the brief.
+- **DataForSEO response paths (confirmed by live AU call — read these nested paths, not flat keys; note that different endpoints may nest fields differently so always extract from the documented nested objects):**
+  - Search volume → `keyword_info.search_volume` (also useful: `keyword_info.competition`, `keyword_info.competition_level`, `keyword_info.cpc`, `keyword_info.monthly_searches`)
+  - Keyword difficulty → `keyword_properties.keyword_difficulty`
+  - Primary intent → `search_intent_info.main_intent`; secondary intents → `search_intent_info.foreign_intent[]`
+  - If a nested field is absent in the response, mark the value `"unavailable"` — never fabricate.
+- Auto-tag the funnel from intent exactly per spec §6 step 2: `transactional` or `commercial` → **BOFU**; `comparison`/`commercial-investigation` → **MOFU**; `informational` (and `navigational` unless it is the client's own brand) → **TOFU**. If `search_intent_info.main_intent` returns no intent for a keyword, fall back: presence of buy/hire/cost/near-me/`{service} {city}` patterns → BOFU; `best/vs/compare/review` → MOFU; `how/what/why/guide/tips` → TOFU. Mark fallback-derived tags as `intent_source: "heuristic"` vs `"dataforseo"` in the brief.
 - Produce an in-memory scored table: `{ keyword, search_volume, keyword_difficulty, intent, funnel, intent_source }` for every candidate. A candidate with `search_volume` unavailable is kept but flagged `volume: "unavailable"` (do not drop on missing data; do not fabricate).
 
 ### Step 3 — SERP Reality Check (BOFU first)
