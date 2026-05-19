@@ -823,6 +823,36 @@ name, url, potentialAction (SearchAction with query-input)
 
 Pages are **server-rendered** and query emdash collections at request time. There is NO `getStaticPaths`, NO `astro:content`, NO `.md` file collections. All page generation is driven by `research/sitemap.json` (Plan 2 output).
 
+> ### 🚩 RED FLAG — EVERY content page is emdash-driven, not just the blog
+>
+> The CCC end-to-end test (2026-05-18/19) caught this exact failure: the
+> agent queried emdash only for blog `posts` and built the six main pages
+> (home, services, why-us, experience, capability-statement, contact) as
+> **hardcoded `.astro` content**. That is a HARD defect, not a shortcut.
+>
+> **Rule:** the visible copy of EVERY page — `index.astro`, `about.astro`,
+> `contact.astro`, every `services/*`, `locations/*`, `posts/*`, and any
+> client-specific page in `research/sitemap.json` (why-us, experience,
+> capability-statement, etc.) — MUST come from an emdash collection entry
+> fetched at request time via `getEmDashEntry(...)` / `getEmDashCollection(...)`,
+> exactly mirroring the working blog `posts/[slug].astro` pattern. The
+> Portable Text body renders through `<PortableText value={entry.data.<field>} />`.
+>
+> **Forbidden (the Nico-static pattern):** writing headings, paragraphs,
+> service descriptions, FAQs, CTAs, stats, or any client-facing prose as
+> literal text inside `.astro` markup or importing it from a `.ts`/`.md`
+> module. `src/data/site-config.ts` is for structural constants only
+> (business name, phone, social URLs, slugs) — it is NOT a content store and
+> MUST NOT hold page body copy, headings, descriptions, or FAQ text. If a
+> page renders a sentence of client copy that did not come from
+> `getEmDashEntry`/`getEmDashCollection`, the page is wrong — rebuild it
+> against the collection.
+>
+> This is also why Defect 3 exists: hardcoded page chrome and config copy
+> reach users in the served HTML and carry em-dash / AU-guide violations
+> that a seed-only audit never sees. Driving every page from emdash keeps
+> all client copy in one auditable place (the seed) AND the served HTML.
+
 **STOP** if `research/sitemap.json` is absent or empty — report: "Cannot build pages — sitemap.json not found. Run the research agent first." Do not invent a page list.
 
 The canonical query patterns come from the emdash template: `src/pages/index.astro` (single entry) and `posts/[slug].astro` / `posts/index.astro` (collection list + entry). Always use `getEmDashEntry(<collection>, <slug>)` for single entries and `getEmDashCollection(<collection>, { ...options })` for lists.
@@ -955,6 +985,25 @@ Data: `getEmDashEntry("pages", "about")`
 - `<CTA>` at bottom (dramatic variant)
 
 Cache: `Astro.cache.set(cacheHint)`.
+
+### Client-specific pages (any other `page_type` in `research/sitemap.json`)
+
+`research/sitemap.json` may include page types beyond the standard set —
+e.g. `why-us`, `experience`, `capability-statement`, or any bespoke page the
+research stage approved. For EACH such item:
+
+- The page's content MUST come from an emdash `pages` collection entry whose
+  slug matches the page (e.g. `getEmDashEntry("pages", "why-us")`,
+  `getEmDashEntry("pages", "capability-statement")`). seo-writer/Plan 5 add
+  these entries to `seed/seed.json`; if a `pages` entry is missing for a
+  sitemap path, that is a content gap to report — do NOT hardcode the page
+  to fill the hole.
+- Render the body through `<PortableText value={entry.data.content} />` (or
+  the entry's body field) and apply the design system (Hero, sections,
+  schema components, internal links) around it exactly as for the standard
+  pages.
+- These pages are subject to the same RED FLAG above: zero client copy
+  literal in `.astro`/`.ts` — all of it from the collection entry.
 
 ### pages/contact.astro (sitemap `page_type: "contact"`)
 
@@ -1222,13 +1271,31 @@ During scaffold you MUST:
 2. Confirm `.gitignore` does NOT contain `seed/assets/` or `seed/` as an excluded path. `seed/assets/` is part of the deliverable repo — generated client imagery ships with the project. (`.dev.vars`, `data.db`, and `dist/` remain gitignored per `references/emdash-scaffold.md` §3.)
 3. Never delete or relocate `seed/assets/`.
 
-**CMS content images use `$media` (`{ url, alt, filename }`).**
-- A local asset's `url` is the repo-relative POSIX path `seed/assets/<filename>` (forward slashes, no leading `./`, no `file:` scheme).
+**CMS content images use `$media` (`{ url, alt, filename }`). The authority
+for the full mechanism is `references/emdash-scaffold.md` §8 — read it; this
+is a summary.**
+- emdash seed `$media` resolution accepts ONLY `http:`/`https:` URLs. A
+  local filesystem path stores the field **NULL** (verified against emdash
+  core: `resolveMedia` → `validateExternalUrl`, scheme allow-list
+  `{http:,https:}`). Do NOT set `$media.url` to `seed/assets/<file>`,
+  `./<file>`, or `file:...`.
+- The webp file still lives on disk at `seed/assets/<filename>` (committed
+  to the repo). During the seed step it is served over a loopback HTTP
+  endpoint (`scripts/emdash-dev.mjs`, default `http://127.0.0.1:4399/`) and
+  `$media.url` is that http URL. emdash downloads it once during
+  `npx emdash seed`, stores it as `provider:"local"` with a storageKey, and
+  serves it at runtime from its media route / R2.
 - The `filename` field is the bare `<filename>` (no directory prefix).
-- emdash ingests `$media` assets into the R2 `MEDIA` bucket on seed-apply.
+- Content + media are applied by the EXPLICIT `npx emdash seed` CLI
+  (`includeContent:true` + storage), NOT by first-request auto-seed
+  (schema-only — `includeContent` defaults false, no storage).
+  `scripts/emdash-dev.mjs` runs this for you.
 
 **This agent does NOT generate images and does NOT write content entries.**
-- Plan 5 (gpt-image) generates images and writes them to `seed/assets/<slug>-hero.webp`.
+- Plan 5 (gpt-image) generates images, writes them to
+  `seed/assets/<slug>-hero.webp`, and sets `$media.url` to the loopback
+  http asset URL (`http://127.0.0.1:4399/<slug>-hero.webp`) per
+  `references/emdash-scaffold.md` §8.
 - Plan 4 (seo-writer) writes `seed/seed.json` entries with
   `"$media": { "url": "PLACEHOLDER_REPLACED_BY_GPT_IMAGE_STAGE5", "alt": "...", "filename": "<slug>-hero.webp" }`.
 - This agent's sole media responsibilities are: (a) create `seed/assets/`, (b) keep it un-gitignored, (c) own the pre-build token gate below.
@@ -1236,11 +1303,20 @@ During scaffold you MUST:
 **Pre-build media gate (wire into smoke-test / build steps; Plan 6 auditor uses this exact check):**
 
 ```powershell
-# Must return zero matches before astro build / wrangler deploy
+# (1) Must return zero matches before astro build / wrangler deploy
 Select-String -Path "<client>\seed\seed.json" -Pattern "PLACEHOLDER_REPLACED_BY_GPT_IMAGE_STAGE5"
+# (2) Every $media.url MUST be http(s) — a non-http url stores NULL silently.
+#     This MUST return zero matches:
+Select-String -Path "<client>\seed\seed.json" -Pattern '"url"\s*:\s*"(?!https?://)(?!/)[^"]*\.(webp|png|jpe?g|gif|avif)"'
 ```
 
-A match means Stage 5 did not run. STOP — do not deploy with a broken seed. Also assert every local `$media.url` (any value that does NOT start with `http`) points at an existing file under `seed/assets/`. Fail early with a clear message rather than letting emdash seed-validation 500 on first request.
+A token match means Stage 5 did not run. A non-http `$media.url` means the
+broken local-path pattern is back (Defect 2 regression) — the image will be
+NULL in D1. STOP in either case — do not deploy with a broken seed. Also
+assert every `$media` `filename` that names a generated asset has a matching
+file under `seed/assets/<filename>` (it is what the loopback server serves
+and what ships in the repo). Confirm seeded media is non-NULL by checking the
+SERVED HTML in the audit (Plan 6 / seo-auditor), not by re-reading seed.json.
 
 **Render path for emdash media objects:** use `<Image image={entry.data.hero_image} />` from `emdash/ui`.
 Use `astro:assets` `<Image>` only for static `public/` assets (logos, icons, etc.) — not for emdash CMS content images.
@@ -1301,11 +1377,21 @@ After generating all files, run a self-check:
 11. Does the header have the scroll progress bar and glass-morphism transition?
 12. Do all section H2s have the scroll-triggered word reveal animation class?
 13. Are there zero references to `content.config.ts`, `getStaticPaths`, or `astro:content` file collections in generated code? emdash uses `getEmDashEntry`/`getEmDashCollection` exclusively.
-14. Do all pages use `getEmDashEntry`/`getEmDashCollection` for data fetching?
+14. **EVERY page route reads content from emdash (Defect 1 verification — run this, do not eyeball):** for every `.astro` file under `src/pages/`, confirm it calls `getEmDashEntry(` or `getEmDashCollection(`. Run:
+    ```powershell
+    # Lists every page route that does NOT query emdash — MUST be empty
+    # (except a pure /404 with no client copy). Any other hit = a hardcoded
+    # page = Defect 1 regression. Rebuild that page against its collection.
+    Get-ChildItem -Recurse src/pages -Filter *.astro |
+      Where-Object {
+        -not (Select-String -Path $_.FullName -Pattern 'getEmDashEntry\(|getEmDashCollection\(' -Quiet)
+      } | Select-Object FullName
+    ```
+    Also spot-check that no page body renders client prose from a literal string or a `src/data/*` import — copy must arrive via `entry.data.*` / `<PortableText value={entry.data.*} />`.
 15. Do both `research/sitemap.json` (fields: `path`, `page_type`, `cluster_id`) and `research/internal-link-map.json` (fields: `links[]` with `from_path`, `to_path`, `relation`) exist? The build STOPS if either is absent or empty.
 16. Is `.dev.vars` gitignored before the first commit? (`references/emdash-scaffold.md` §3 gate.)
 17. Is the `worker_loaders` block in `wrangler.jsonc` commented out?
 18. Are `src/live.config.ts`, `emdash-env.d.ts`, and `worker-configuration.d.ts` untouched? (R2 do-not-edit guardrails — pin emdash version per client, never modify these files.)
 19. Are all icons inline SVG with `currentColor`? No `astro-iconset` or Phosphor packages present.
 20. Is `@astrojs/sitemap` kept and `astro-robots-txt` NOT added? (Plan 6 gates robots reconciliation.)
-21. Does `seed/assets/` exist, is it NOT gitignored, and does the pre-build gate (`Select-String ... -Pattern "PLACEHOLDER_REPLACED_BY_GPT_IMAGE_STAGE5"`) return zero matches before deploy?
+21. Does `seed/assets/` exist, is it NOT gitignored, does the token gate (`Select-String ... "PLACEHOLDER_REPLACED_BY_GPT_IMAGE_STAGE5"`) return zero matches, AND is every `$media.url` an `http(s)://` URL (NOT a `seed/assets/...` / `./...` / `file:` path — a non-http url stores the image NULL in D1)? Both pre-build gate regexes in the Media section must return zero matches.
