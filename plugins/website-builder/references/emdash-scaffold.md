@@ -103,6 +103,18 @@ block types. There is no upgrade-in-place; upgrades come via
 - Nico's `content.config.ts` + per-`.md` collections + `getStaticPaths` →
   DISCARDED. Content is D1 + `seed/seed.json` Portable Text emdash
   collections, queried at request time.
+  - **Applies to EVERY content page, not just the blog.** The CCC test
+    (2026-05-18/19) found home, services, why-us, experience,
+    capability-statement, and contact built as hardcoded `.astro` markup
+    while only blog `posts` queried emdash. That is WRONG. Every page that
+    renders client copy — the homepage, every service/location page, about,
+    contact, capability-statement, why-us, experience, and every blog post —
+    MUST read its visible content from emdash collections via
+    `getEmDashEntry`/`getEmDashCollection` at request time, mirroring the
+    working blog `[slug].astro` pattern. Hardcoding page copy into `.astro`
+    files (the original Nico-static pattern) is a HARD red flag: it bypasses
+    D1, makes the content un-editable in the CMS, and (per Defect 3) puts
+    em-dash/AU-guide violations into served HTML that seed-only audits miss.
 - `@astrojs/tailwind` deprecated → `@tailwindcss/vite`.
 - Cloudflare image service vs emdash R2 media → use emdash R2 media; do not
   set Nico's `image.service` Cloudflare entrypoint.
@@ -116,42 +128,114 @@ block types. There is no upgrade-in-place; upgrades come via
   Homepage `WebSiteSchema` double-emission with emdash's site-wide `WebSite`
   is a Plan 4/6 reconciliation item — flag, do not fix here.
 
-## 8. Media assets — `$media` local-path → R2 ingestion (Plan 5↔3 contract)
+## 8. Media assets — generated webp → http-seed → D1/R2 (Plan 5↔3 contract)
+
+> **This section was corrected after the CCC end-to-end test (2026-05-18/19).**
+> The previous contract ("emdash seed-apply ingests a local
+> `seed/assets/<file>` path on first request") is FALSE and was the root
+> cause of NULL `hero_image`/`featured_image` in D1. The mechanism below is
+> the only emdash-supported path; it is verified against emdash core source.
 
 emdash content image fields use the `$media` form:
 
-    "hero_image": { "$media": { "url": "<path-or-url>", "alt": "...", "filename": "name.webp" } }
+    "hero_image": { "$media": { "url": "<http-or-https-url>", "alt": "...", "filename": "name.webp" } }
 
-On first-request seed-apply, emdash resolves `$media.url`, ingests the asset
-into the R2 `MEDIA` bucket (deduped by content hash — stage0-findings Open
-Item C), and stores a TEXT reference `{ id, src?, alt?, ... }` on the entry
-row. `$media.url` may be a remote URL OR a build-local path resolvable from
-the project root at seed time.
+### Two hard constraints emdash core imposes (do not design around these)
 
-**Canonical asset directory (LOCKED): `seed/assets/`.** All generated/local
-images live at `seed/assets/<filename>`. `$media.url` for a local asset is
-the repo-relative POSIX path `seed/assets/<filename>` (forward slashes, no
-leading `./`, no `file:` scheme). The `filename` field is the bare
-`<filename>` (no directory).
+1. **`$media.url` MUST be `http:` or `https:`.** Seed `$media` resolution
+   (`resolveMedia` in emdash core `packages/core/src/seed/apply.ts`) calls
+   `validateExternalUrl(url)` (`packages/core/src/security/ssrf.ts`,
+   `ALLOWED_SCHEMES = {"http:","https:"}`) and then `ssrfSafeFetch(url)`. A
+   local filesystem path (`seed/assets/foo.webp`, `./foo.webp`, `file:...`)
+   throws `SsrfError`, the error is swallowed (`result.media.skipped++`),
+   `resolveMedia` returns `null`, and the image field is stored **NULL**.
+   There is NO filesystem-path branch in `resolveMedia` — local paths are
+   not "resolvable from the project root at seed time". That earlier claim
+   was wrong.
 
-**Plan 4 → Plan 5 → emdash flow (do not deviate):**
+2. **Auto-seed does NOT seed content or media.** emdash's first-request
+   auto-seed (`emdash-runtime.ts`, "Auto-seeded default collections") calls
+   `applySeed(db, seed, { onConflict: "skip" })` with **no `includeContent`
+   and no `storage`**. `applySeed` defaults `includeContent = false`
+   (`apply.ts`), so auto-seed creates the **collection schema only** — zero
+   content entries, zero media. The ONLY core paths that apply content +
+   `$media` with a storage adapter are the **`npx emdash seed` CLI**
+   (`cli/commands/seed.ts`: `includeContent: !--no-content` + a
+   `LocalStorage` adapter) and the setup wizard / dev-bypass route. "Seed
+   applies on first request" is therefore NOT sufficient for a content site.
+
+### The supported mechanism (verified against emdash core)
+
+Generated webps are written to `seed/assets/<filename>`, served over a
+loopback HTTP endpoint during the seed step, referenced by that http URL in
+`$media.url`, and ingested by the explicit **`npx emdash seed`** CLI (which
+provides `includeContent:true` + a storage adapter). Once ingested, emdash
+stores the media as `provider:"local"` with a `storageKey` and serves it at
+runtime via its own media route / R2 binding — the original http seed URL is
+used only for the one-time download and is never referenced again.
+
+**Canonical asset directory (LOCKED): `seed/assets/`.** All generated images
+live at `seed/assets/<filename>`. The `filename` field of `$media` is the
+bare `<filename>` (no directory). `seed/assets/` is part of the deliverable
+repo (NOT gitignored) — the webps ship with the project so a fresh clone can
+re-seed.
+
+**Plan 4 → Plan 5 → seed flow (do not deviate):**
 1. Plan 4 (seo-writer) writes entries with
    `"$media": { "url": "PLACEHOLDER_REPLACED_BY_GPT_IMAGE_STAGE5",
    "alt": "<keyword-rich alt>", "filename": "<slug>-hero.webp" }`.
 2. Plan 5 (gpt-image) writes the WebP to `seed/assets/<slug>-hero.webp`
-   and replaces the token so `url` becomes `seed/assets/<slug>-hero.webp`
-   (`filename` already matches the bare name).
-3. emdash seed-apply reads `seed/assets/<slug>-hero.webp` from the project
-   root, ingests it into R2, and the entry renders via `emdash/ui`
-   `<Image image={entry.data.hero_image} />`.
+   and replaces the token so `url` becomes
+   `http://127.0.0.1:4399/<slug>-hero.webp` (the loopback asset endpoint
+   `scripts/emdash-dev.mjs` serves `seed/assets/` on — default `--asset-port
+   4399`). `filename` stays the bare `<slug>-hero.webp`. The webp file on
+   disk under `seed/assets/` is the durable artifact committed to the repo;
+   the http URL is the seed-time ingestion handle only.
+3. `scripts/emdash-dev.mjs` (or the documented preview procedure §8a) starts
+   the loopback asset server, runs `npx emdash seed seed/seed.json
+   --on-conflict skip` (which sets `includeContent:true` + `LocalStorage`),
+   then stops the asset server. emdash downloads each webp over http, ingests
+   it into the media table + storage (R2 binding on Cloudflare), and the
+   entry renders via `emdash/ui` `<Image image={entry.data.hero_image} />`.
 
-**Gating rule (build must not ship the token):** before `astro build` /
-`wrangler deploy`, assert no `PLACEHOLDER_REPLACED_BY_GPT_IMAGE_STAGE5`
-remains in `seed/seed.json` and every `$media.url` that is a local path
-points at an existing file under `seed/assets/`. A residual token means
-Stage 5 did not run — STOP, do not deploy with a broken seed (emdash seed
-validation would 500 the first request anyway; fail early with a clear
-message instead).
+### §8a. Dev / preview seeding procedure (replaces the test's out-of-band workaround)
+
+The CCC test needed an ad-hoc `seed-miniflare.py` because the old
+`emdash-dev.mjs` only warmed a request and relied on (broken-for-content)
+auto-seed. That workaround is folded in properly:
+
+- **Local dev / verification:** `node scripts/emdash-dev.mjs --cwd <client>`.
+  It now: (1) migrates via `npx emdash dev`, (2) serves `seed/assets/` on
+  `127.0.0.1:<asset-port>`, (3) runs `npx emdash seed` with content+media,
+  (4) stops the asset server, (5) starts `astro dev`. No manual curl, no
+  external script. Use `--no-seed` only to re-start against an
+  already-seeded `data.db`.
+- **Preview (`wrangler dev` / deployed Worker):** the same `npx emdash seed`
+  CLI is the seeding step; point `--database` / storage at the wrangler
+  local D1/R2 (`.wrangler/state`) or run the seed against the deployed
+  Worker's setup route. The asset server must be reachable from wherever the
+  seed runs (loopback is fine for `wrangler dev`; for a remote Worker seed,
+  the assets must be served from a host the Worker can reach).
+- Any seed-reading helper script MUST open `seed/seed.json` BOM-tolerantly
+  (`encoding="utf-8-sig"` in Python, or strip a leading U+FEFF in Node) —
+  emdash/Windows toolchains can emit a BOM and a strict `utf-8` read throws.
+
+**Gating rule (build must not ship the token, and media must not be NULL):**
+before `astro build` / `wrangler deploy`, assert:
+1. No `PLACEHOLDER_REPLACED_BY_GPT_IMAGE_STAGE5` remains in `seed/seed.json`.
+2. Every `$media.url` is an `http://`/`https://` URL (NOT a bare path,
+   `./...`, or `file:`). A non-http `$media.url` will silently store NULL.
+3. For every `$media` whose `filename` is a generated asset, the file
+   exists under `seed/assets/<filename>` (it is what the loopback server
+   serves and what ships in the repo).
+4. After the seed step, the seeded D1 has a non-NULL media reference for
+   every content entry that declares a `$media` field (verify via the
+   served HTML in the audit — Plan 6 / seo-auditor — not by re-reading
+   seed.json).
+
+A residual token, a non-http `$media.url`, or a missing
+`seed/assets/<filename>` means Stage 5 / the seed step did not complete —
+STOP, do not deploy with a broken seed.
 
 `seed/assets/` is NOT gitignored — generated client imagery is part of the
 deliverable repo. (`.dev.vars`/`data.db`/`dist/` remain gitignored per §3.)
