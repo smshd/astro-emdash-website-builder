@@ -209,9 +209,10 @@ If any check fails, fix it directly before proceeding. Do not hand off to the au
 Spawn the **seo-auditor agent** using the Task tool. Pass it:
 - The full list of generated files
 - The business data summary
-- Instructions to read every relevant file and run the full audit checklist (including the new Section 8: Design Quality checks)
+- The per-client project path so it can start the dev/preview server
+- Instructions to run its Step A FIRST (start `node scripts/emdash-dev.mjs --cwd <client>`, fetch every route, audit the SERVED HTML — not seed.json or source — for content/dash/AU/keyword checks per Defect 3), then run the full checklist (including Section 8: Design Quality)
 
-The auditor will return a structured report (PASS/FAIL per check with file:line references).
+The auditor will return a structured report (PASS/FAIL per check, with the route URL + offending rendered text for served-HTML checks and file:line for structural checks). A report that did not start the server and audit served HTML is invalid — it must be re-run, not accepted (this is the exact false-PASS the CCC test caught: em-dashes reported 0 from a seed-only scan while the rendered pages had 119).
 
 If there are FAILs, address each one:
 - Content failures: fix via seo-writer or directly
